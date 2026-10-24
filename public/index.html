@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>问界M6 纯电Max+ · 终极赛道版</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/style.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body>
+    <canvas id="scene"></canvas>
+
+    <div id="launch-hint">⚡ 弹射模式已就绪，松开刹车！</div>
+    <div id="drift-hint">🔥 漂移得分 <span id="drift-score">0</span></div>
+
+    <div id="hud-fp">
+        <div class="fp-speed"><span id="fp-speed-val">0</span> <small>km/h</small></div>
+        <div class="fp-mode" id="fp-mode-val">READY</div>
+        <div class="fp-battery">剩余续航: <span id="fp-battery-val">630</span> km</div>
+        <div id="slipstream-hint"
+            style="color:#ffaa00; font-weight:bold; font-size:16px; margin-top:5px; opacity:0; transition:opacity 0.3s;">
+            ⚡ 尾流加速中</div>
+    </div>
+
+    <aside id="left-panel">
+        <div id="info-panel" class="glass-panel">
+            <h1>问界 M6 纯电 Max+</h1>
+            <div class="subtitle">二驱 · 81kWh · 赛道重构版</div>
+            <div class="spec-grid">
+                <div class="spec-item"><span class="label">驾驶模式</span><span class="value highlight"
+                        id="val-mode">舒适</span></div>
+                <div class="spec-item"><span class="label">环境天气</span><span class="value" id="val-weather">晴天</span>
+                </div>
+                <div class="spec-item"><span class="label">实时电耗</span><span class="value" id="val-power">12.5
+                        kWh/100km</span></div>
+                <div class="spec-item"><span class="label">电池电量</span><span class="value highlight"
+                        id="val-battery">100%</span></div>
+            </div>
+        </div>
+        <div id="sys-log" class="glass-panel">
+            <div class="log-line">> 赛道自检完成...</div>
+            <div class="log-line">> 欢迎使用 HUAWEI ADS 3.0</div>
+        </div>
+    </aside>
+
+    <div id="control-panel" class="glass-panel">
+        <div class="panel-section">
+            <div class="panel-title">视角与驾驶</div>
+            <div class="btn-grid">
+                <button data-view="driver">主驾</button>
+                <button data-view="passenger">副驾</button>
+                <button data-view="rear">后座</button>
+                <button data-view="chase">跟随</button>
+                <button data-view="orbit" class="active">自由</button>
+            </div>
+            <div class="btn-grid" style="margin-top: 8px; grid-template-columns: 1fr 1fr 1fr;">
+                <button class="mode-btn active" data-mode="comfort">舒适</button>
+                <button class="mode-btn" data-mode="sport">运动</button>
+                <button class="mode-btn" data-mode="eco">经济</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">智能驾驶与辅助</div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                <button id="btn-lcc" class="wide">LCC 巡航</button>
+                <button id="btn-nca" class="wide">NCA 领航</button>
+            </div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                <button id="btn-park" class="wide">自动泊车</button>
+                <button id="btn-racingline" class="wide">赛车线</button>
+            </div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                <button id="btn-ghost" class="wide">幽灵车</button>
+                <button id="btn-sound" class="wide">开启声浪</button>
+            </div>
+
+            <div class="speed-control">
+                <input type="range" id="speed-slider" min="20" max="150" value="60">
+                <span class="speed-value"><span id="speed-val">60</span> km/h</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">驾驶参数调节</div>
+            <div class="speed-control" style="margin-top: 0;">
+                <span style="font-size: 12px; color: #7a9cc6; width: 60px;">最高限速</span>
+                <input type="range" id="limit-slider" min="60" max="200" value="120">
+                <span class="speed-value" style="width: 60px;"><span id="limit-val">120</span> km/h</span>
+            </div>
+            <div class="speed-control" style="margin-top: 8px;">
+                <span style="font-size: 12px; color: #7a9cc6; width: 60px;">转向灵敏度</span>
+                <input type="range" id="steer-sens-slider" min="0.3" max="0.8" step="0.05" value="0.55">
+                <span class="speed-value" id="steer-sens-val" style="width: 60px;">正常</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">环境与车控</div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
+                <button id="btn-weather">开启雨天</button>
+                <button id="btn-daynight">切换黄昏</button>
+            </div>
+            <div class="btn-grid" style="margin-top: 8px; grid-template-columns: 1fr 1fr;">
+                <button id="btn-onepedal">单踏板</button>
+                <button id="btn-hazard">双闪</button>
+            </div>
+            <div class="color-row" style="margin-top: 10px;">
+                <div class="color-swatch active" data-color="purple" style="background:#2C1B3D"></div>
+                <div class="color-swatch" data-color="blue" style="background:#0A4A6B"></div>
+                <div class="color-swatch" data-color="white" style="background:#F2F0E9"></div>
+                <div class="color-swatch" data-color="black" style="background:#0B0B0C"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="lap-timer" class="glass-panel">
+        <div class="lap-item">圈数: <span id="lap-count">0</span></div>
+        <div class="lap-item">当前: <span id="lap-current">--:--.---</span></div>
+        <div class="lap-item">最佳: <span id="lap-best">--:--.---</span></div>
+        <div class="lap-item" style="color:#ffaa00; margin-left:10px;">S1: <span id="s1-time">--.--</span></div>
+        <div class="lap-item" style="color:#ffaa00;">S2: <span id="s2-time">--.--</span></div>
+        <div class="lap-item" style="color:#ffaa00;">S3: <span id="s3-time">--.--</span></div>
+    </div>
+
+    <div id="hud" class="glass-panel">
+        <div class="hud-item speed"><span id="hud-speed">0</span><small>km/h</small></div>
+        <div class="hud-item gear"><span id="hud-gear">P</span></div>
+        <div class="hud-item mode"><span id="hud-mode">手动驾驶</span></div>
+        <div class="hud-item steer">
+            <div class="steer-bar">
+                <div id="steer-indicator"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hint">W/↑ 加速 · S/↓ 刹车 · A/← 左转 · D/→ 右转 · 空格 手刹</div>
+    <canvas id="minimap" width="150" height="150" class="glass-panel"></canvas>
+
+    <script type="module" src="/js/main.js"></script>
+</body>
+
+</html>

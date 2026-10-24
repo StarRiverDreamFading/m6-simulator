@@ -1,0 +1,140 @@
+[
+  {
+    "id": "mvjko8t1",
+    "createdAt": "2026-10-22T13:24:03.350Z",
+    "type": "parking_complete",
+    "spot": {
+      "x": -20.712481185638165,
+      "z": 17.41595277592023
+    }
+  },
+  {
+    "id": "mvjko3nd",
+    "createdAt": "2026-10-22T13:23:56.665Z",
+    "type": "parking_start",
+    "spot": {
+      "x": -20.712481185638165,
+      "z": 17.41595277592023
+    }
+  },
+  {
+    "id": "mvjkje2e",
+    "createdAt": "2026-10-22T13:20:16.886Z",
+    "type": "parking_complete",
+    "spot": {
+      "x": 20,
+      "z": 0
+    }
+  },
+  {
+    "id": "mvjkj99h",
+    "createdAt": "2026-10-22T13:20:10.661Z",
+    "type": "parking_start",
+    "spot": {
+      "x": 20,
+      "z": 0
+    }
+  },
+  {
+    "id": "mvjkg1mb",
+    "createdAt": "2026-10-22T13:17:40.788Z",
+    "type": "parking_complete",
+    "spot": {
+      "x": -18,
+      "z": -3
+    }
+  },
+  {
+    "id": "mvjkfy9j",
+    "createdAt": "2026-10-22T13:17:36.439Z",
+    "type": "parking_start",
+    "spot": {
+      "x": -18,
+      "z": -3
+    }
+  },
+  {
+    "id": "mvjkfuj1",
+    "createdAt": "2026-10-22T13:17:31.597Z",
+    "type": "parking_complete",
+    "spot": {
+      "x": -18,
+      "z": 2
+    }
+  },
+  {
+    "id": "mvjkfr3j",
+    "createdAt": "2026-10-22T13:17:27.151Z",
+    "type": "parking_start",
+    "spot": {
+      "x": -18,
+      "z": 2
+    }
+  },
+  {
+    "id": "mvjkfgoq",
+    "createdAt": "2026-10-22T13:17:13.658Z",
+    "type": "parking_complete",
+    "spot": {
+      "x": -18,
+      "z": 7
+    }
+  },
+  {
+    "id": "mvjkfd2y",
+    "createdAt": "2026-10-22T13:17:08.986Z",
+    "type": "parking_start",
+    "spot": {
+      "x": -18,
+      "z": 7
+    }
+  },
+  {
+    "id": "mvjkcmo7",
+    "createdAt": "2026-10-22T13:15:01.447Z",
+    "type": "parking_complete",
+    "spot": {
+      "x": 18,
+      "z": 2
+    }
+  },
+  {
+    "id": "mvjkcj9n",
+    "createdAt": "2026-10-22T13:14:57.035Z",
+    "type": "parking_start",
+    "spot": {
+      "x": 18,
+      "z": 2
+    }
+  },
+  {
+    "id": "mvjkcd4e",
+    "createdAt": "2026-10-22T13:14:49.070Z",
+    "type": "autopilot_start",
+    "speed": 9
+  },
+  {
+    "id": "mvjkboij",
+    "createdAt": "2026-10-22T13:14:17.179Z",
+    "type": "parking_complete",
+    "spot": {
+      "x": 18,
+      "z": 7
+    }
+  },
+  {
+    "id": "mvjkbl3f",
+    "createdAt": "2026-10-22T13:14:12.747Z",
+    "type": "parking_start",
+    "spot": {
+      "x": 18,
+      "z": 7
+    }
+  },
+  {
+    "id": "mvjkb6lz",
+    "createdAt": "2026-10-22T13:13:53.975Z",
+    "type": "autopilot_start",
+    "speed": 9
+  }
+]
