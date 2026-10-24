@@ -47,79 +47,62 @@ scene.add(env.group);
 const vehicle = createVehicle();
 scene.add(vehicle.group);
 
-// ================= 幽灵车 =================
+// ================= 超载尾焰特效 =================
+const flameGeo = new THREE.ConeGeometry(0.4, 2, 8);
+flameGeo.rotateX(Math.PI / 2);
+const flameMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+const flameL = new THREE.Mesh(flameGeo, flameMat);
+const flameR = new THREE.Mesh(flameGeo, flameMat);
+flameL.position.set(0.5, 0.5, -2.2);
+flameR.position.set(-0.5, 0.5, -2.2);
+flameL.visible = false; flameR.visible = false;
+vehicle.group.add(flameL); vehicle.group.add(flameR);
+
+// ================= 幽灵车 & 烟雾粒子 =================
 let ghostCar = null;
 let ghostData = [];
 let ghostFrame = 0;
 const ghostMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.3, wireframe: true });
 
-// ================= 增强版烟雾粒子系统（彻底修复不可见问题） =================
-// 1. 生成柔和圆形的贴图
+const smokeSprites = [];
 const smokeCanvas = document.createElement('canvas');
-smokeCanvas.width = 64;
-smokeCanvas.height = 64;
+smokeCanvas.width = 64; smokeCanvas.height = 64;
 const sCtx = smokeCanvas.getContext('2d');
 const sGrad = sCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-sGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-sGrad.addColorStop(0.5, 'rgba(240, 240, 240, 0.6)');
+sGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
 sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-sCtx.fillStyle = sGrad;
-sCtx.fillRect(0, 0, 64, 64);
+sCtx.fillStyle = sGrad; sCtx.fillRect(0, 0, 64, 64);
 const smokeTexture = new THREE.CanvasTexture(smokeCanvas);
 
-const particleCount = 300;
-const particles = new THREE.BufferGeometry();
-const particlePositions = new Float32Array(particleCount * 3);
-const particleSpeeds = [];
-const particleLifes = new Float32Array(particleCount);
-particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-
-// 使用贴图，并加大尺寸
-const particleMat = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 8,
-    map: smokeTexture,
-    transparent: true,
-    opacity: 0.9,
-    depthWrite: false,
-    blending: THREE.NormalBlending
-});
-const particleMesh = new THREE.Points(particles, particleMat);
-scene.add(particleMesh);
-
-for (let i = 0; i < particleCount; i++) {
-    particleSpeeds.push(new THREE.Vector3(0, 0, 0));
-    particlePositions[i * 3 + 1] = -100; // 隐藏
+for (let i = 0; i < 150; i++) {
+    const mat = new THREE.SpriteMaterial({ map: smokeTexture, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(2, 2, 1);
+    scene.add(sprite);
+    smokeSprites.push({ sprite, life: 0, velocity: new THREE.Vector3() });
 }
 
 // ================= 胎痕 =================
 const skidMarks = [];
-const skidGeo = new THREE.PlaneGeometry(0.35, 1.0);
-const skidMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.6, depthWrite: false });
-for (let i = 0; i < 300; i++) {
+const skidGeo = new THREE.PlaneGeometry(0.35, 1.2);
+const skidMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, depthWrite: false });
+for (let i = 0; i < 400; i++) {
     const mark = new THREE.Mesh(skidGeo, skidMat);
-    mark.rotation.x = -Math.PI / 2; mark.visible = false;
-    scene.add(mark); skidMarks.push(mark);
+    mark.visible = false;
+    scene.add(mark);
+    skidMarks.push(mark);
 }
 let skidIndex = 0;
 
-// ================= 声浪模拟 =================
-let audioCtx = null;
-let osc = null;
-let gainNode = null;
 let soundEnabled = false;
+let audioCtx = null, osc = null, gainNode = null;
 
 function initAudio() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        osc = audioCtx.createOscillator();
-        gainNode = audioCtx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.value = 100;
-        gainNode.gain.value = 0;
-        osc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        osc.start();
+        osc = audioCtx.createOscillator(); gainNode = audioCtx.createGain();
+        osc.type = 'sawtooth'; osc.frequency.value = 100; gainNode.gain.value = 0;
+        osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.start();
     }
 }
 
@@ -128,8 +111,7 @@ scene.add(arLineGroup);
 for (let i = 0; i < 100; i++) {
     const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3), mat);
-    plane.visible = false;
-    arLineGroup.add(plane);
+    plane.visible = false; arLineGroup.add(plane);
 }
 
 const aiCars = [];
@@ -137,8 +119,7 @@ const aiCarMat = new THREE.MeshStandardMaterial({ color: 0x223344, metalness: 0.
 for (let i = 0; i < 3; i++) {
     const aiCar = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 4), aiCarMat);
-    body.position.y = 0.75; aiCar.add(body);
-    scene.add(aiCar);
+    body.position.y = 0.75; aiCar.add(body); scene.add(aiCar);
     aiCars.push({ mesh: aiCar, t: Math.random() });
 }
 
@@ -155,6 +136,8 @@ const slipstreamHint = document.getElementById('slipstream-hint');
 const launchHint = document.getElementById('launch-hint');
 const driftHint = document.getElementById('drift-hint');
 const driftScoreEl = document.getElementById('drift-score');
+const speedLines = document.getElementById('speed-lines');
+const overdriveHint = document.getElementById('overdrive-hint');
 const hudSpeed = document.getElementById('hud-speed');
 const hudGear = document.getElementById('hud-gear');
 const hudMode = document.getElementById('hud-mode');
@@ -162,6 +145,7 @@ const steerIndicator = document.getElementById('steer-indicator');
 const btnLCC = document.getElementById('btn-lcc');
 const btnNCA = document.getElementById('btn-nca');
 const btnPark = document.getElementById('btn-park');
+const btnStunt = document.getElementById('btn-stunt');
 const btnRacingLine = document.getElementById('btn-racingline');
 const btnGhost = document.getElementById('btn-ghost');
 const btnSound = document.getElementById('btn-sound');
@@ -194,6 +178,14 @@ const driving = new DrivingController(vehicle.group, vehicle, env, {
     onLog: (msg) => logMsg(msg)
 });
 
+btnStunt.addEventListener('click', () => {
+    if (driving.mode !== 'manual') driving.stopAutopilot();
+    driving.startStunt();
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-view="orbit"]').classList.add('active');
+    rig.setMode('orbit');
+});
+
 btnSound.addEventListener('click', () => {
     initAudio();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -203,12 +195,7 @@ btnSound.addEventListener('click', () => {
     if (!soundEnabled) gainNode.gain.value = 0;
 });
 
-btnGhost.addEventListener('click', () => {
-    showGhost = !showGhost;
-    btnGhost.classList.toggle('active', showGhost);
-    if (ghostCar) ghostCar.visible = showGhost;
-});
-
+btnGhost.addEventListener('click', () => { showGhost = !showGhost; btnGhost.classList.toggle('active', showGhost); if (ghostCar) ghostCar.visible = showGhost; });
 limitSlider.addEventListener('input', (e) => { driving.manualMaxSpeed = parseInt(e.target.value) / 3.6; limitVal.textContent = e.target.value; });
 steerSensSlider.addEventListener('input', (e) => { driving.maxSteer = parseFloat(e.target.value); steerSensVal.textContent = e.target.value <= 0.4 ? '平缓' : (e.target.value >= 0.7 ? '灵敏' : '正常'); });
 
@@ -225,8 +212,7 @@ function logMsg(text) {
 document.querySelectorAll('[data-view]').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        rig.setMode(btn.dataset.view);
+        btn.classList.add('active'); rig.setMode(btn.dataset.view);
         hudFp.style.display = (btn.dataset.view === 'driver') ? 'flex' : 'none';
     });
 });
@@ -234,8 +220,7 @@ document.querySelectorAll('[data-view]').forEach(btn => {
 document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        driving.setDriveMode(btn.dataset.mode);
+        btn.classList.add('active'); driving.setDriveMode(btn.dataset.mode);
         document.getElementById('val-mode').textContent = btn.textContent;
     });
 });
@@ -245,44 +230,29 @@ btnNCA.addEventListener('click', () => { currentMode === 'nca' ? driving.stopAut
 btnPark.addEventListener('click', () => { if (currentMode !== 'manual') driving.stopAutopilot(); driving.startParking(); });
 speedSlider.addEventListener('input', (e) => { driving.autopilotTargetSpeed = parseInt(e.target.value) / 3.6; speedVal.textContent = e.target.value; });
 
-btnRacingLine.addEventListener('click', () => {
-    showRacingLine = !showRacingLine;
-    btnRacingLine.classList.toggle('active', showRacingLine);
-});
-
-btnOnepedal.addEventListener('click', () => {
-    isOnepedal = !isOnepedal;
-    driving.onepedal = isOnepedal;
-    btnOnepedal.classList.toggle('active', isOnepedal);
-});
+btnRacingLine.addEventListener('click', () => { showRacingLine = !showRacingLine; btnRacingLine.classList.toggle('active', showRacingLine); });
+btnOnepedal.addEventListener('click', () => { isOnepedal = !isOnepedal; driving.onepedal = isOnepedal; btnOnepedal.classList.toggle('active', isOnepedal); });
 
 btnDayNight.addEventListener('click', () => {
     if (currentEnv === 'day') {
-        currentEnv = 'dusk';
-        btnDayNight.textContent = '切换黑夜';
+        currentEnv = 'dusk'; btnDayNight.textContent = '切换黑夜';
         scene.background.setHex(0x3a2015); scene.fog.color.setHex(0x3a2015);
-        sun.color.setHex(0xff7733); sun.position.set(-50, 20, 50); sun.intensity = 1.5;
-        hemiLight.intensity = 0.4;
+        sun.color.setHex(0xff7733); sun.position.set(-50, 20, 50); sun.intensity = 1.5; hemiLight.intensity = 0.4;
     } else if (currentEnv === 'dusk') {
-        currentEnv = 'night';
-        btnDayNight.textContent = '切换白天';
+        currentEnv = 'night'; btnDayNight.textContent = '切换白天';
         scene.background.setHex(0x050810); scene.fog.color.setHex(0x050810);
         sun.intensity = 0.1; hemiLight.intensity = 0.1;
     } else {
-        currentEnv = 'day';
-        btnDayNight.textContent = '切换黄昏';
+        currentEnv = 'day'; btnDayNight.textContent = '切换黄昏';
         scene.background.setHex(0x87a5c4); scene.fog.color.setHex(0x87a5c4);
-        sun.color.setHex(0xfff5e6); sun.position.set(100, 100, 50); sun.intensity = 3.0;
-        hemiLight.intensity = 1.0;
+        sun.color.setHex(0xfff5e6); sun.position.set(100, 100, 50); sun.intensity = 3.0; hemiLight.intensity = 1.0;
     }
 });
 
 btnWeather.addEventListener('click', () => {
-    isRaining = !isRaining;
-    btnWeather.textContent = isRaining ? '关闭雨天' : '开启雨天';
+    isRaining = !isRaining; btnWeather.textContent = isRaining ? '关闭雨天' : '开启雨天';
     env.rain.visible = isRaining;
-    if (isRaining) { env.trackMat.roughness = 0.2; }
-    else { env.trackMat.roughness = 0.9; }
+    if (isRaining) { env.trackMat.roughness = 0.2; } else { env.trackMat.roughness = 0.9; }
 });
 btnHazard.addEventListener('click', () => { hazardOn = !hazardOn; btnHazard.classList.toggle('active', hazardOn); });
 
@@ -301,10 +271,11 @@ function drawScreen(speed, gear) {
         ctx.textAlign = 'left'; ctx.font = '24px monospace'; ctx.fillStyle = '#6b87ad'; ctx.fillText('km/h', 230, 150);
         ctx.font = 'bold 56px monospace'; ctx.fillStyle = '#ffffff'; ctx.fillText(gear, 30, 100);
 
-        const gForce = Math.abs(driving.steer * (speed / 100) * 1.5).toFixed(2);
-        const tpms = (2.4 + Math.sin(performance.now() * 0.001) * 0.1).toFixed(1);
-        ctx.fillStyle = '#8be9c1'; ctx.font = '16px monospace'; ctx.fillText(`G: ${gForce}`, 30, 180);
-        ctx.fillText(`胎压: ${tpms} bar`, 30, 205);
+        ctx.fillStyle = '#333'; ctx.fillRect(30, 220, 200, 10);
+        ctx.fillStyle = driving.isOverdrive ? '#ff0055' : '#00f0ff';
+        ctx.fillRect(30, 220, 200 * (driving.overdriveEnergy / 100), 10);
+        ctx.font = '12px monospace'; ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left'; ctx.fillText('OVERDRIVE', 30, 215);
     }
 
     const cx = 386, cy = 128, radius = 100;
@@ -335,124 +306,110 @@ function animate() {
     timeSec += dt;
 
     driving.update(dt);
-    rig.update(dt);
+
+    // 特技模式下摄像机环绕运镜
+    if (driving.isStunting) {
+        rig.controls.enabled = false;
+        const radius = 16;
+        const camAngle = driving.stuntAngle - Math.PI / 2;
+        camera.position.x += (driving.stuntCenter.x + Math.cos(camAngle) * radius - camera.position.x) * dt * 4;
+        camera.position.z += (driving.stuntCenter.z + Math.sin(camAngle) * radius - camera.position.z) * dt * 4;
+        camera.position.y += (12 - camera.position.y) * dt * 4;
+        camera.lookAt(driving.stuntCenter.x, 1, driving.stuntCenter.z);
+    } else {
+        rig.controls.enabled = true;
+        rig.update(dt);
+    }
 
     const currentSpeed = Math.round(driving.getSpeedKmh());
 
-    // 声浪处理
+    // 超载声浪
     if (soundEnabled && osc) {
-        const targetFreq = 100 + currentSpeed * 5;
+        let targetFreq = 100 + currentSpeed * 5;
+        if (driving.isOverdrive) targetFreq += 300;
         osc.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.1);
         const targetGain = driving.keys.w ? 0.15 : (driving.keys.s ? 0.05 : 0.02);
         gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.1);
     }
 
-    // ================= 漂移判定与粒子生成 =================
-    const isDrifting = (Math.abs(driving.driftAngle) > 0.15 || driving.keys.handbrake) && currentSpeed > 25;
+    // 超载视觉特效 (加入空值判断，防止报错)
+    if (driving.isOverdrive) {
+        flameL.visible = true; flameR.visible = true;
+        flameL.scale.set(1 + Math.random() * 0.2, 1 + Math.random() * 0.2, 1 + Math.random() * 0.5);
+        flameR.scale.set(1 + Math.random() * 0.2, 1 + Math.random() * 0.2, 1 + Math.random() * 0.5);
+        if (overdriveHint) overdriveHint.style.opacity = 1;
+        if (speedLines) speedLines.classList.add('active');
+        bloomPass.strength = 3.0;
+        camera.fov += (85 - camera.fov) * dt * 10;
+    } else {
+        flameL.visible = false; flameR.visible = false;
+        if (overdriveHint) overdriveHint.style.opacity = 0;
+        if (speedLines) speedLines.classList.remove('active');
+        bloomPass.strength += (1.0 - bloomPass.strength) * dt * 5;
+        let targetFov = 45 + Math.max(0, (currentSpeed - 60) * 0.15);
+        camera.fov += (targetFov - camera.fov) * dt * 5;
+    }
+    camera.updateProjectionMatrix();
+
+    // 漂移判定（特技时强制漂移）
+    const isDrifting = driving.isStunting || ((Math.abs(driving.driftAngle) > 0.15 || driving.keys.handbrake) && currentSpeed > 5);
 
     if (isDrifting) {
-        const points = Math.floor((driving.driftAngle + 0.1) * 100 * dt);
-        driftScore += points;
-        driftScoreEl.textContent = driftScore;
+        if (!driving.isStunting) {
+            const points = Math.floor((driving.driftAngle + 0.1) * 100 * dt);
+            driftScore += points;
+            driftScoreEl.textContent = driftScore;
+        }
         driftHint.style.opacity = 1;
 
-        // 增加轻微镜头震动
-        camera.position.x += (Math.random() - 0.5) * 0.1;
-        camera.position.y += (Math.random() - 0.5) * 0.1;
+        // 拉烟（特技时翻倍）
+        let spawned = 0;
+        smokeSprites.forEach(s => {
+            if (s.life <= 0 && spawned < (driving.isStunting ? 6 : 3)) {
+                const wPos = new THREE.Vector3();
+                const targetWheel = Math.random() > 0.5 ? vehicle.wheels.RL.group : vehicle.wheels.RR.group;
+                targetWheel.getWorldPosition(wPos);
+                s.sprite.position.set(wPos.x + (Math.random() - 0.5) * 0.5, 0.2, wPos.z + (Math.random() - 0.5) * 0.5);
+                s.velocity.set((Math.random() - 0.5) * 3, Math.random() * 2 + 0.5, (Math.random() - 0.5) * 3);
+                s.life = 1.5; s.sprite.visible = true; s.sprite.material.opacity = 0.8; s.sprite.scale.set(2, 2, 1);
+                spawned++;
+            }
+        });
 
-        // 生成滚滚白烟 (一次生成12个，非常浓密)
-        for (let i = 0; i < 12; i++) {
-            const idx = Math.floor(Math.random() * particleCount);
-            // 获取后轮世界坐标
-            const wPos = new THREE.Vector3();
-            const targetWheel = Math.random() > 0.5 ? vehicle.wheels.RL.group : vehicle.wheels.RR.group;
-            targetWheel.getWorldPosition(wPos);
-
-            // 发射位置
-            particlePositions[idx * 3] = wPos.x + (Math.random() - 0.5) * 0.8;
-            particlePositions[idx * 3 + 1] = 0.15 + Math.random() * 0.2; // 贴近地面
-            particlePositions[idx * 3 + 2] = wPos.z + (Math.random() - 0.5) * 0.8;
-
-            // 扩散速度 (慢慢向四周和上方飘，不要瞬间飞走)
-            particleSpeeds[idx].set((Math.random() - 0.5) * 1.5, Math.random() * 1.0 + 0.5, (Math.random() - 0.5) * 1.5);
-            particleLifes[idx] = 2.0; // 延长存活时间
-        }
-
-        // 生成黑色胎痕
-        if (Math.floor(timeSec * 60) % 2 === 0) {
+        // 画胎痕（特技时每一帧画）
+        const skipFrame = driving.isStunting ? 1 : 2;
+        if (Math.floor(timeSec * 60) % skipFrame === 0) {
             ['RL', 'RR'].forEach(wName => {
                 const wheel = vehicle.wheels[wName].group;
                 const worldPos = new THREE.Vector3(); wheel.getWorldPosition(worldPos);
                 const mark = skidMarks[skidIndex];
-                mark.position.copy(worldPos); mark.position.y = 0.06;
-                mark.rotation.z = -vehicle.group.rotation.y; mark.visible = true;
+                mark.position.copy(worldPos); mark.position.y = 0.04;
+                mark.rotation.set(-Math.PI / 2, 0, 0);
+                mark.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), vehicle.group.rotation.y);
+                mark.visible = true;
                 skidIndex = (skidIndex + 1) % skidMarks.length;
             });
         }
     } else {
         driftHint.style.opacity = 0;
-        driftScore = Math.max(0, driftScore - 20 * dt); // 停止漂移后缓慢扣分
+        driftScore = Math.max(0, driftScore - 20 * dt);
         driftScoreEl.textContent = Math.floor(driftScore);
     }
 
-    // 更新烟雾位置和生命周期
-    for (let i = 0; i < particleCount; i++) {
-        if (particleLifes[i] > 0) {
-            particleLifes[i] -= dt; // 每秒减 1
-            particlePositions[i * 3] += particleSpeeds[i].x * dt;
-            particlePositions[i * 3 + 1] += particleSpeeds[i].y * dt;
-            particlePositions[i * 3 + 2] += particleSpeeds[i].z * dt;
-
-            // 模拟烟雾消散：越往后升得越快，向两侧散开
-            particleSpeeds[i].x *= (1 + dt);
-            particleSpeeds[i].z *= (1 + dt);
-            particleSpeeds[i].y += dt * 1.5;
-
-            if (particleLifes[i] <= 0) {
-                particlePositions[i * 3 + 1] = -100; // 隐藏
-            }
+    smokeSprites.forEach(s => {
+        if (s.life > 0) {
+            s.life -= dt * 1.5;
+            s.sprite.position.add(s.velocity.clone().multiplyScalar(dt));
+            s.velocity.x *= (1 + dt * 2); s.velocity.z *= (1 + dt * 2); s.velocity.y += dt * 1.0;
+            s.sprite.material.opacity = Math.max(0, s.life * 0.8);
+            s.sprite.scale.setScalar(2 + (1 - s.life) * 3);
+            if (s.life <= 0) s.sprite.visible = false;
         }
-    }
-    particles.attributes.position.needsUpdate = true;
-
-    // 赛车线
-    if (showRacingLine) {
-        let minDist = Infinity, closestT = 0;
-        for (let i = 0; i < 200; i++) {
-            const t = i / 200;
-            const p = driving.autopilotCurve.getPointAt(t);
-            const d = p.distanceToSquared(driving.position);
-            if (d < minDist) { minDist = d; closestT = t; }
-        }
-
-        for (let i = 0; i < 100; i++) {
-            const t = (closestT + i * 0.003) % 1;
-            const p = driving.autopilotCurve.getPointAt(t);
-            const tangent = driving.autopilotCurve.getTangentAt(t);
-            const plane = arLineGroup.children[i];
-            plane.visible = true;
-            plane.position.copy(p); plane.position.y = 0.08;
-            plane.rotation.x = -Math.PI / 2; plane.rotation.z = -Math.atan2(tangent.x, tangent.z);
-
-            const pNext = driving.autopilotCurve.getTangentAt((t + 0.01) % 1);
-            const dot = tangent.x * pNext.x + tangent.z * pNext.z;
-            const curvature = Math.acos(Math.min(1, Math.max(-1, dot)));
-
-            const mat = plane.material;
-            mat.opacity += (0.6 - mat.opacity) * dt * 5;
-            mat.color.setHex(curvature > 0.01 ? 0xff0000 : (curvature > 0.005 ? 0xffff00 : 0x00ff00));
-        }
-    } else {
-        for (let i = 0; i < 100; i++) {
-            const plane = arLineGroup.children[i];
-            plane.material.opacity += (0 - plane.material.opacity) * dt * 5;
-            if (plane.material.opacity < 0.01) plane.visible = false;
-        }
-    }
+    });
 
     // 幽灵车与圈速
     const t = driving.autopilotT;
-    if (driving.mode === 'autopilot' || currentSpeed > 5) {
+    if (!driving.isStunting && (driving.mode === 'autopilot' || currentSpeed > 5)) {
         if (lapStartTime === 0) {
             lapStartTime = performance.now();
             if (!driving.isRecording) { driving.ghostData = []; driving.isRecording = true; }

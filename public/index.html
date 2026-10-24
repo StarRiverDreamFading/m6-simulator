@@ -20,8 +20,12 @@
 <body>
     <canvas id="scene"></canvas>
 
+    <!-- 全屏速度线特效 -->
+    <div id="speed-lines"></div>
+
     <div id="launch-hint">⚡ 弹射模式已就绪，松开刹车！</div>
     <div id="drift-hint">🔥 漂移得分 <span id="drift-score">0</span></div>
+    <div id="overdrive-hint">🚀 OVERDRIVE 超载模式</div>
 
     <div id="hud-fp">
         <div class="fp-speed"><span id="fp-speed-val">0</span> <small>km/h</small></div>
@@ -76,6 +80,10 @@
                 <button id="btn-lcc" class="wide">LCC 巡航</button>
                 <button id="btn-nca" class="wide">NCA 领航</button>
             </div>
+            <!-- 一键特技按钮 -->
+            <button id="btn-stunt" class="wide"
+                style="color: #ffaa00; border-color: #ffaa00; box-shadow: 0 0 10px rgba(255,170,0,0.3);">🔥 一键特技
+                (画圈漂移)</button>
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
                 <button id="btn-park" class="wide">自动泊车</button>
                 <button id="btn-racingline" class="wide">赛车线</button>
@@ -144,7 +152,8 @@
         </div>
     </div>
 
-    <div id="hint">W/↑ 加速 · S/↓ 刹车 · A/← 左转 · D/→ 右转 · 空格 手刹</div>
+    <div id="hint">W/↑ 加速 · S/↓ 刹车 · A/← 左转 · D/→ 右转 · 空格 手刹 · <span style="color:#00f0ff; font-weight:bold;">Shift
+            超载加速</span></div>
     <canvas id="minimap" width="150" height="150" class="glass-panel"></canvas>
 
     <script type="module" src="/js/main.js"></script>
