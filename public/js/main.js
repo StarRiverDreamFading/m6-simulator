@@ -53,15 +53,37 @@ let ghostData = [];
 let ghostFrame = 0;
 const ghostMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.3, wireframe: true });
 
-// ================= 增强版烟雾粒子 =================
-const particleCount = 200;
+// ================= 增强版烟雾粒子系统（彻底修复不可见问题） =================
+// 1. 生成柔和圆形的贴图
+const smokeCanvas = document.createElement('canvas');
+smokeCanvas.width = 64;
+smokeCanvas.height = 64;
+const sCtx = smokeCanvas.getContext('2d');
+const sGrad = sCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+sGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+sGrad.addColorStop(0.5, 'rgba(240, 240, 240, 0.6)');
+sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+sCtx.fillStyle = sGrad;
+sCtx.fillRect(0, 0, 64, 64);
+const smokeTexture = new THREE.CanvasTexture(smokeCanvas);
+
+const particleCount = 300;
 const particles = new THREE.BufferGeometry();
 const particlePositions = new Float32Array(particleCount * 3);
 const particleSpeeds = [];
-const particleLifes = new Float32Array(particleCount); // 记录存活时间
+const particleLifes = new Float32Array(particleCount);
 particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-// 尺寸加大，颜色调浅
-const particleMat = new THREE.PointsMaterial({ color: 0xdddddd, size: 3.5, transparent: true, opacity: 0.7, depthWrite: false });
+
+// 使用贴图，并加大尺寸
+const particleMat = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 8,
+    map: smokeTexture,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: false,
+    blending: THREE.NormalBlending
+});
 const particleMesh = new THREE.Points(particles, particleMat);
 scene.add(particleMesh);
 
@@ -325,32 +347,35 @@ function animate() {
         gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.1);
     }
 
-    // ================= 修复后的漂移判定与特效 =================
-    // 降低阈值 (0.15)，让猛打方向或拉手刹更容易触发
+    // ================= 漂移判定与粒子生成 =================
     const isDrifting = (Math.abs(driving.driftAngle) > 0.15 || driving.keys.handbrake) && currentSpeed > 25;
 
     if (isDrifting) {
-        // 增加得分
         const points = Math.floor((driving.driftAngle + 0.1) * 100 * dt);
         driftScore += points;
         driftScoreEl.textContent = driftScore;
         driftHint.style.opacity = 1;
 
-        // 生成滚滚白烟 (一次生成8个粒子，更浓密)
-        for (let i = 0; i < 8; i++) {
+        // 增加轻微镜头震动
+        camera.position.x += (Math.random() - 0.5) * 0.1;
+        camera.position.y += (Math.random() - 0.5) * 0.1;
+
+        // 生成滚滚白烟 (一次生成12个，非常浓密)
+        for (let i = 0; i < 12; i++) {
             const idx = Math.floor(Math.random() * particleCount);
-            // 随机从后轮位置发射
+            // 获取后轮世界坐标
             const wPos = new THREE.Vector3();
             const targetWheel = Math.random() > 0.5 ? vehicle.wheels.RL.group : vehicle.wheels.RR.group;
             targetWheel.getWorldPosition(wPos);
 
-            particlePositions[idx * 3] = wPos.x + (Math.random() - 0.5) * 0.6;
-            particlePositions[idx * 3 + 1] = 0.2 + Math.random() * 0.3; // 稍微抬高一点
-            particlePositions[idx * 3 + 2] = wPos.z + (Math.random() - 0.5) * 0.6;
+            // 发射位置
+            particlePositions[idx * 3] = wPos.x + (Math.random() - 0.5) * 0.8;
+            particlePositions[idx * 3 + 1] = 0.15 + Math.random() * 0.2; // 贴近地面
+            particlePositions[idx * 3 + 2] = wPos.z + (Math.random() - 0.5) * 0.8;
 
-            // 粒子向上、向外扩散的速度
-            particleSpeeds[idx].set((Math.random() - 0.5) * 2, Math.random() * 2 + 1, (Math.random() - 0.5) * 2);
-            particleLifes[idx] = 1.0; // 重置生命周期
+            // 扩散速度 (慢慢向四周和上方飘，不要瞬间飞走)
+            particleSpeeds[idx].set((Math.random() - 0.5) * 1.5, Math.random() * 1.0 + 0.5, (Math.random() - 0.5) * 1.5);
+            particleLifes[idx] = 2.0; // 延长存活时间
         }
 
         // 生成黑色胎痕
@@ -364,20 +389,24 @@ function animate() {
                 skidIndex = (skidIndex + 1) % skidMarks.length;
             });
         }
-
     } else {
         driftHint.style.opacity = 0;
-        // 停止漂移时，缓慢扣除得分（或者不清空，看你想怎么设计）
-        // driftScore = Math.max(0, driftScore - 5); 
+        driftScore = Math.max(0, driftScore - 20 * dt); // 停止漂移后缓慢扣分
+        driftScoreEl.textContent = Math.floor(driftScore);
     }
 
     // 更新烟雾位置和生命周期
     for (let i = 0; i < particleCount; i++) {
         if (particleLifes[i] > 0) {
-            particleLifes[i] -= dt * 1.5; // 寿命约 0.66 秒
+            particleLifes[i] -= dt; // 每秒减 1
             particlePositions[i * 3] += particleSpeeds[i].x * dt;
             particlePositions[i * 3 + 1] += particleSpeeds[i].y * dt;
             particlePositions[i * 3 + 2] += particleSpeeds[i].z * dt;
+
+            // 模拟烟雾消散：越往后升得越快，向两侧散开
+            particleSpeeds[i].x *= (1 + dt);
+            particleSpeeds[i].z *= (1 + dt);
+            particleSpeeds[i].y += dt * 1.5;
 
             if (particleLifes[i] <= 0) {
                 particlePositions[i * 3 + 1] = -100; // 隐藏
