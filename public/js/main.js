@@ -34,6 +34,10 @@ const rearViewMirror = document.getElementById('rear-view-mirror');
 const diaWarning = document.getElementById('dia-warning');
 const bsdWarning = document.getElementById('bsd-warning');
 
+// 获取所有关键 UI DOM
+const chargingUI = document.getElementById('charging-ui');
+const btnUnplug = document.getElementById('btn-unplug');
+
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.85);
 bloomPass.threshold = 0.8; bloomPass.strength = 1.0; bloomPass.radius = 0.5;
@@ -109,12 +113,10 @@ const speedLines = document.getElementById('speed-lines'); const hudMode = docum
 const valBattery = document.getElementById('val-battery'); const valPower = document.getElementById('val-power');
 const valTpmsF = document.getElementById('val-tpms-f'); const valTpmsR = document.getElementById('val-tpms-r');
 const holoSpeed = document.getElementById('holo-speed'); const holoG = document.getElementById('holo-g');
-const valBestLap = document.getElementById('val-best-lap'); // 新增最佳圈速 DOM
+const valBestLap = document.getElementById('val-best-lap');
 
-// ====== 本地数据加载 ======
 const savedBestLap = localStorage.getItem('m6_best_lap');
 if (savedBestLap && valBestLap) valBestLap.textContent = savedBestLap;
-// =========================
 
 const driving = new DrivingController(vehicle.group, vehicle, env, {
     onModeChange: (mode) => { currentMode = mode; updateModeUI(mode); },
@@ -150,15 +152,11 @@ const driving = new DrivingController(vehicle.group, vehicle, env, {
     }
 });
 
-// 监听圈速更新并保存到本地（模拟测试，如果需要真实圈速请自行实现计时逻辑）
-// 这里我们监听漂移得分的更新
-let lastSavedDrift = 0;
-setInterval(() => {
-    if (driftScore > lastSavedDrift) {
-        localStorage.setItem('m6_drift_score', driftScore.toString());
-        lastSavedDrift = driftScore;
-    }
-}, 2000);
+btnUnplug?.addEventListener('click', () => {
+    driving.stopCharging();
+    logMsg("🔌 充电枪已拔出，车辆恢复动力");
+    if (chargingUI) chargingUI.style.display = 'none';
+});
 
 const rig = new CameraRig(camera, renderer.domElement, vehicle.group);
 rig.controls.target.set(0, 0.9, 0);
@@ -341,7 +339,6 @@ function drawMinimap(carPos, yaw) {
     mtx.closePath();
     mtx.strokeStyle = 'rgba(100, 200, 255, 0.5)'; mtx.lineWidth = 6; mtx.stroke();
 
-    // 绘制充电桩
     if (env.chargingStations) {
         env.chargingStations.forEach(station => {
             const x = 75 + (station.position.x / 300) * 60; const z = 75 + (station.position.z / 300) * 60;
@@ -416,10 +413,11 @@ function animate() {
         if (driving.isCharging) {
             valBattery.style.color = '#00ff88';
             valBattery.style.textShadow = '0 0 10px #00ff88';
-            valBattery.textContent += ' (充电中...)';
+            if (chargingUI) chargingUI.style.display = 'block';
         } else {
             valBattery.style.color = '#00f0ff';
             valBattery.style.textShadow = 'none';
+            if (chargingUI) chargingUI.style.display = 'none';
         }
     }
 
@@ -449,7 +447,7 @@ function animate() {
     vehicle.headlight.intensity = shouldHeadlightOn ? 15 : 0;
     vehicle.lightWhite.emissiveIntensity = shouldHeadlightOn ? 3.0 : 0.1;
 
-    const isBraking = driving.keys.s || driving.keys.handbrake || (driving.isIncapacitated && currentSpeed > 0);
+    const isBraking = driving.keys.s || driving.keys.handbrake || (driving.isIncapacitated && currentSpeed > 0) || driving.isCharging;
     vehicle.lightRed.emissiveIntensity = isBraking ? 5.0 : (shouldHeadlightOn ? 2.0 : 0.1);
 
     const blink = Math.sin(performance.now() * 0.015) > 0;

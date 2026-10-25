@@ -28,7 +28,6 @@
         <div class="warning-sub">系统已接管，正在紧急靠边停车...</div>
     </div>
 
-    <!-- 盲区监测警告 -->
     <div id="bsd-warning">⚠️ 盲区有车，请勿变道</div>
 
     <div id="hologram-hud">
@@ -59,16 +58,12 @@
                 </div>
                 <div class="spec-item"><span class="label">实时电耗</span><span class="value" id="val-power">0.0
                         kWh/100km</span></div>
-                <div class="spec-item"><span class="label">电池电量</span><span class="value highlight"
-                        id="val-battery">100%</span></div>
+                <div class="spec-item"><span class="label">电池电量</span><span class="value highlight" id="val-battery"
+                        style="transition: all 0.3s;">100%</span></div>
                 <div class="spec-item"><span class="label">前轮胎压</span><span class="value" id="val-tpms-f">2.4 bar</span>
                 </div>
                 <div class="spec-item"><span class="label">后轮胎压</span><span class="value" id="val-tpms-r">2.4 bar</span>
                 </div>
-            </div>
-            <div class="spec-item" style="grid-column: span 2; margin-top: 8px;">
-                <span class="label">最佳圈速 (本地)</span>
-                <span class="value highlight" id="val-best-lap" style="font-size: 16px;">--:--.---</span>
             </div>
         </div>
         <div id="sys-log" class="glass-panel">
@@ -78,6 +73,13 @@
     </aside>
 
     <div id="control-panel" class="glass-panel">
+        <!-- 充电交互 UI -->
+        <div id="charging-ui" style="display: none; margin-bottom: 12px;">
+            <button id="btn-unplug" class="wide"
+                style="background: rgba(0, 255, 136, 0.15); color: #00ff88; border-color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.4); font-weight: bold; font-size: 15px; padding: 14px;">🔌
+                拔枪并解锁</button>
+        </div>
+
         <div class="panel-section">
             <div class="panel-title">视角与设备</div>
             <div class="btn-grid">

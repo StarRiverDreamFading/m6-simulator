@@ -90,46 +90,20 @@ export function buildEnvironment() {
     const garage = new THREE.Mesh(new THREE.BoxGeometry(50, 10, 15), new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.6 }));
     garage.position.set(0, 5, -95); garage.castShadow = true; group.add(garage);
 
-    // ===== 新增：充电桩系统 =====
-    const chargingStations = [];
-    const stationGeo = new THREE.CylinderGeometry(0.8, 1, 2.5, 8);
-    const stationMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
-    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.6 });
-
-    // 在赛道周围放 4 个充电桩
-    const stationTs = [0.1, 0.35, 0.6, 0.85];
-    stationTs.forEach(t => {
-        const p = autopilotCurve.getPointAt(t);
-        const tangent = autopilotCurve.getTangentAt(t);
-        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-        // 放在赛道外侧
-        const pos = p.clone().add(normal.clone().multiplyScalar(12));
-
-        const stationGroup = new THREE.Group();
-        const pillar = new THREE.Mesh(stationGeo, stationMat);
-        pillar.position.y = 1.25; pillar.castShadow = true;
-        stationGroup.add(pillar);
-
-        // 充电光柱
-        const glow = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 4, 16, 1, true), glowMat);
-        glow.position.y = 2;
-        stationGroup.add(glow);
-
-        stationGroup.position.copy(pos);
-        group.add(stationGroup);
-
-        chargingStations.push({ mesh: stationGroup, position: pos, glow });
-    });
-    // ==============================
-
+    // ===== 充电桩与停车位 =====
     const parkingSpots = [];
+    const chargingStations = [];
+
     const pBase = autopilotCurve.getPointAt(0.05);
     const pTangent = autopilotCurve.getTangentAt(0.05);
     const pNormal = new THREE.Vector3(-pTangent.z, 0, pTangent.x).normalize();
     const angleP = Math.atan2(pTangent.x, pTangent.z);
 
+    const stationMat = new THREE.MeshStandardMaterial({ color: 0x22252a, metalness: 0.8, roughness: 0.3 });
+    const screenMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+
     for (let i = 0; i < 5; i++) {
-        const spotPos = pBase.clone().add(pTangent.clone().multiplyScalar(-i * 6)).add(pNormal.clone().multiplyScalar(-15));
+        const spotPos = pBase.clone().add(pTangent.clone().multiplyScalar(-i * 7)).add(pNormal.clone().multiplyScalar(-15));
         parkingSpots.push({ x: spotPos.x, z: spotPos.z, yaw: angleP + Math.PI / 2, occupied: false });
 
         const slot = new THREE.Group();
@@ -146,6 +120,30 @@ export function buildEnvironment() {
         slot.position.set(spotPos.x, 0, spotPos.z);
         slot.rotation.y = angleP + Math.PI / 2;
         group.add(slot);
+
+        // 逼真的充电桩模型
+        const stationGroup = new THREE.Group();
+        // 底座
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.6), stationMat);
+        base.position.y = 0.1; base.castShadow = true;
+        stationGroup.add(base);
+        // 桩体
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 0.4), stationMat);
+        pillar.position.y = 0.9; pillar.castShadow = true;
+        stationGroup.add(pillar);
+        // 发光屏幕
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.6), screenMat);
+        screen.position.set(0, 1.1, 0.21);
+        stationGroup.add(screen);
+
+        // 位置
+        const stationOffset = new THREE.Vector3(0, 0, -3.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), angleP + Math.PI / 2);
+        const finalStationPos = spotPos.clone().add(stationOffset);
+        stationGroup.position.copy(finalStationPos);
+        stationGroup.rotation.y = angleP + Math.PI / 2; // 面向车位
+        group.add(stationGroup);
+
+        chargingStations.push({ mesh: stationGroup, position: finalStationPos, spotIndex: i });
     }
 
     const obstacles = [];

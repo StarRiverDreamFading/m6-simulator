@@ -30,12 +30,12 @@ export class DrivingController {
         this.launchReady = false; this.launchTimer = 0;
         this.overdriveEnergy = 100; this.isOverdrive = false;
 
-        // 初始化电量从本地缓存读取
         const savedBattery = localStorage.getItem('m6_battery');
         this.battery = savedBattery !== null ? parseFloat(savedBattery) : 100;
         this.powerConsumption = 0;
 
-        this.isCharging = false; // 充电状态
+        this.isCharging = false;
+        this.chargingCooldown = 0; // 新增：拔枪冷却时间
 
         this.isStunting = false; this.stuntTimer = 0; this.stuntAngle = 0;
         this.stuntCenter = new THREE.Vector3();
@@ -105,7 +105,7 @@ export class DrivingController {
     }
 
     startAutopilot(mode) {
-        if (this.mode === 'parking' || this.isStunting || this.isIncapacitated) return;
+        if (this.mode === 'parking' || this.isStunting || this.isIncapacitated || this.isCharging) return;
         this.autopilotMode = mode;
         let bestT = 0, bestDist = Infinity;
         for (let i = 0; i < 200; i++) {
@@ -122,7 +122,7 @@ export class DrivingController {
     }
 
     startP2P() {
-        if (this.isIncapacitated || this.isStunting) return;
+        if (this.isIncapacitated || this.isStunting || this.isCharging) return;
         this.isP2PActive = true;
         this.p2pPhase = 'cruise';
         this.startAutopilot('nca');
@@ -140,6 +140,14 @@ export class DrivingController {
     recoverFromIncapacitation() {
         this.isIncapacitated = false;
         this.callbacks.onDIARecover?.();
+    }
+
+    // ===== 拔枪解锁 =====
+    stopCharging() {
+        this.isCharging = false;
+        this.chargingCooldown = 3.0; // 拔枪后3秒内不重新判定充电
+        this.speed = 2.5; // 给一个向前的溜车速度，脱离充电桩范围
+        this.gear = GEAR.D;
     }
 
     update(dt, aiCars = []) {
@@ -193,16 +201,18 @@ export class DrivingController {
 
         if (this.isStunting) { this.updateStunt(dt); return; }
 
-        // ================= 新增：充电检测 =================
+        // ================= 修复：充电检测逻辑 =================
+        if (this.chargingCooldown > 0) this.chargingCooldown -= dt;
+
         this.isCharging = false;
-        if (this.env.chargingStations) {
+        if (this.env.chargingStations && this.chargingCooldown <= 0) {
             for (const station of this.env.chargingStations) {
                 const dist = this.position.distanceTo(station.position);
                 // 距离充电桩 5 米内，且车速低于 2km/h 时开始充电
-                if (dist < 5 && Math.abs(this.speed) < 0.5) {
+                if (dist < 5 && Math.abs(this.speed) < 0.5 && this.mode === 'manual') {
                     this.isCharging = true;
                     this.speed = 0; // 强制锁车
-                    this.battery = Math.min(100, this.battery + dt * 10); // 每秒充 10%
+                    this.battery = Math.min(100, this.battery + dt * 2.0); // 放慢充电速度：每秒充 2%
                     break;
                 }
             }
@@ -282,7 +292,6 @@ export class DrivingController {
             this.applyToCar(dt, res.accel, res.isBraking);
         }
 
-        // 保存电量到本地
         localStorage.setItem('m6_battery', this.battery.toString());
 
         if (Math.abs(this.speed) > 5) {
