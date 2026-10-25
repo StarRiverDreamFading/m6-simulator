@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>问界M6 纯电Max+ · 次世代终极模拟</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>问界M6 纯电Max+ · 终极赛道版</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/style.css">
     <script type="importmap">
@@ -19,17 +19,16 @@
 
 <body>
     <canvas id="scene"></canvas>
-
-    <!-- 全屏速度线 & 后视镜 -->
     <div id="speed-lines"></div>
+
     <div id="rear-view-mirror">
-        <div class="mirror-content">REAR CAM</div>
+        <canvas id="mirror-canvas" width="300" height="150"></canvas>
+        <div class="mirror-label">REAR CAM</div>
     </div>
 
     <div id="launch-hint">⚡ 弹射模式已就绪，松开刹车！</div>
     <div id="drift-hint">🔥 漂移得分 <span id="drift-score">0</span></div>
     <div id="overdrive-hint">🚀 OVERDRIVE 超载模式</div>
-    <div id="collision-hint">💥 发生碰撞！</div>
 
     <div id="hud-fp">
         <div class="fp-speed"><span id="fp-speed-val">0</span> <small>km/h</small></div>
@@ -39,13 +38,13 @@
     <aside id="left-panel">
         <div id="info-panel" class="glass-panel">
             <h1>问界 M6 纯电 Max+</h1>
-            <div class="subtitle">二驱 · 81kWh · 次世代模拟版</div>
+            <div class="subtitle">二驱 · 81kWh · 赛道终极重构版</div>
             <div class="spec-grid">
                 <div class="spec-item"><span class="label">驾驶模式</span><span class="value highlight"
                         id="val-mode">舒适</span></div>
                 <div class="spec-item"><span class="label">环境天气</span><span class="value" id="val-weather">晴天</span>
                 </div>
-                <div class="spec-item"><span class="label">实时电耗</span><span class="value" id="val-power">12.5
+                <div class="spec-item"><span class="label">实时电耗</span><span class="value" id="val-power">0.0
                         kWh/100km</span></div>
                 <div class="spec-item"><span class="label">电池电量</span><span class="value highlight"
                         id="val-battery">100%</span></div>
@@ -59,7 +58,7 @@
 
     <div id="control-panel" class="glass-panel">
         <div class="panel-section">
-            <div class="panel-title">视角切换</div>
+            <div class="panel-title">视角与设备</div>
             <div class="btn-grid">
                 <button data-view="driver">主驾</button>
                 <button data-view="passenger">副驾</button>
@@ -67,20 +66,38 @@
                 <button data-view="drone">无人机</button>
                 <button data-view="orbit" class="active">自由</button>
             </div>
+            <div class="btn-grid" style="margin-top: 8px;">
+                <button id="btn-input-keyboard" class="active">键盘</button>
+                <button id="btn-input-joystick">摇杆</button>
+            </div>
         </div>
 
         <div class="panel-section">
-            <div class="panel-title">智能与特技</div>
+            <div class="panel-title">智能驾驶与特技</div>
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
                 <button id="btn-lcc" class="wide">LCC 巡航</button>
                 <button id="btn-nca" class="wide">NCA 领航</button>
             </div>
-            <button id="btn-stunt" class="wide"
-                style="color: #ffaa00; border-color: #ffaa00; box-shadow: 0 0 10px rgba(255,170,0,0.3);">🔥
-                一键特技</button>
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
-                <button id="btn-park" class="wide">自动泊车</button>
+                <button id="btn-acc" class="wide">ACC 自适应</button>
+                <button id="btn-rca" class="wide">RCA 漫游</button>
+            </div>
+            <button id="btn-stunt" class="wide" style="color: #ffaa00; border-color: #ffaa00;">🔥 一键特技</button>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-title">车辆控制</div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                <button id="btn-onepedal" class="wide">单踏板</button>
+                <button id="btn-hazard" class="wide">双闪</button>
+            </div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
                 <button id="btn-ghost" class="wide">幽灵车</button>
+                <button id="btn-sound" class="wide">开启声浪</button>
+            </div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
+                <button id="btn-racingline" class="wide">赛车线</button>
+                <button id="btn-park" class="wide">自动泊车</button>
             </div>
         </div>
 
@@ -95,6 +112,9 @@
                 <button id="btn-weather">开启雨天</button>
                 <button id="btn-daynight">切换黄昏</button>
             </div>
+            <div class="btn-grid" style="margin-top: 8px;">
+                <button id="btn-auto-weather" class="wide">自动天气轮换</button>
+            </div>
         </div>
     </div>
 
@@ -106,6 +126,23 @@
 
     <div id="hint">W/↑ 加速 · S/↓ 刹车 · A/D 转向 · 空格 手刹 · Shift 超载</div>
     <canvas id="minimap" width="150" height="150" class="glass-panel"></canvas>
+
+    <div id="joystick-container" style="display: none;">
+        <div id="joy-left" class="joystick-base">
+            <div class="joystick-stick"></div>
+            <div class="joystick-label">方向</div>
+        </div>
+        <div id="joy-right-area">
+            <div class="joy-action-btns">
+                <button id="btn-joy-overdrive" class="joy-btn">超载</button>
+                <button id="btn-joy-handbrake" class="joy-btn">手刹</button>
+            </div>
+            <div id="joy-right" class="joystick-base">
+                <div class="joystick-stick"></div>
+                <div class="joystick-label">油门/刹车</div>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="/js/main.js"></script>
 </body>

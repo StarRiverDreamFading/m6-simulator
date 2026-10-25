@@ -10,10 +10,14 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
+
+// 【Render 适配】优先使用环境变量 DATA_DIR（用于挂载持久化磁盘）
+// 如果本地开发没有设置环境变量，则默认使用项目目录下的 data 文件夹
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const TRIP_FILE = path.join(DATA_DIR, 'trips.json');
 const EVENT_FILE = path.join(DATA_DIR, 'events.json');
 
+// 确保数据目录存在
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const readJson = (file, fallback) => {
@@ -39,6 +43,7 @@ const VEHICLE_CONFIG = {
 };
 
 app.use(express.json({ limit: '1mb' }));
+// 提供静态文件访问 (指向 public 文件夹)
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/config', (req, res) => res.json(VEHICLE_CONFIG));
@@ -87,4 +92,8 @@ wss.on('connection', (ws) => {
     ws.on('close', () => clearInterval(timer));
 });
 
-server.listen(PORT, () => console.log(`问界M6 3D模拟器: http://localhost:${PORT}`));
+// 【Render 适配】必须监听 0.0.0.0，Render 才能将外网流量转发进容器
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`问界M6 3D模拟器正在监听端口: ${PORT}`);
+    console.log(`数据存储目录: ${DATA_DIR}`);
+});

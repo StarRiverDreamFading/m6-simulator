@@ -47,6 +47,7 @@ body {
     text-shadow: 0 0 20px #ff0055;
     display: none;
     z-index: 20;
+    pointer-events: none;
     animation: flash 0.5s infinite alternate;
 }
 
@@ -60,7 +61,6 @@ body {
     }
 }
 
-/* Ư�Ƶ÷� */
 #drift-hint {
     position: absolute;
     top: 30%;
@@ -74,6 +74,85 @@ body {
     z-index: 20;
     pointer-events: none;
     transition: opacity 0.3s;
+}
+
+#overdrive-hint {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #00f0ff;
+    font-size: 42px;
+    font-weight: 900;
+    font-family: monospace;
+    text-shadow: 0 0 30px #00f0ff;
+    opacity: 0;
+    z-index: 20;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    letter-spacing: 5px;
+}
+
+#rear-view-mirror {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 150px;
+    border-radius: 12px;
+    border: 2px solid rgba(100, 200, 255, 0.4);
+    background: #000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    display: none;
+    z-index: 20;
+    pointer-events: none;
+}
+
+#mirror-canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mirror-label {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    color: #00f0ff;
+    font-family: monospace;
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+#speed-lines {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(circle, transparent 30%, rgba(0, 240, 255, 0.2) 100%);
+    transition: opacity 0.3s;
+}
+
+#speed-lines.active {
+    opacity: 1;
+}
+
+#speed-lines.active::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    background: repeating-conic-gradient(from 0deg, transparent 0deg, transparent 2deg, rgba(255, 255, 255, 0.4) 3deg, transparent 4deg);
+    animation: spin 0.1s linear infinite;
+    opacity: 1;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(10deg);
+    }
 }
 
 #hud-fp {
@@ -108,23 +187,11 @@ body {
     font-size: 64px;
 }
 
-#hud-fp .fp-speed small {
-    font-size: 18px;
-    color: #8be9c1;
-}
-
 #hud-fp .fp-mode {
     font-size: 18px;
     color: #8be9c1;
     letter-spacing: 2px;
     margin-top: 5px;
-}
-
-#hud-fp .fp-battery {
-    font-size: 13px;
-    color: #fff;
-    margin-top: 5px;
-    opacity: 0.8;
 }
 
 #left-panel {
@@ -136,6 +203,7 @@ body {
     flex-direction: column;
     gap: 16px;
     pointer-events: none;
+    z-index: 10;
 }
 
 #info-panel {
@@ -189,10 +257,6 @@ body {
     gap: 4px;
 }
 
-.log-line {
-    opacity: 0.8;
-}
-
 #control-panel {
     position: absolute;
     top: 24px;
@@ -204,6 +268,7 @@ body {
     gap: 12px;
     max-height: calc(100vh - 48px);
     overflow-y: auto;
+    z-index: 10;
 }
 
 .panel-title {
@@ -255,29 +320,6 @@ body {
     padding: 8px 4px;
 }
 
-.color-row {
-    display: flex;
-    gap: 8px;
-}
-
-.color-swatch {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-}
-
-.color-swatch:hover {
-    transform: scale(1.1);
-}
-
-.color-swatch.active {
-    border-color: #00f0ff;
-    box-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
-}
-
 .speed-control {
     display: flex;
     align-items: center;
@@ -313,27 +355,6 @@ body {
     font-family: monospace;
 }
 
-#lap-timer {
-    position: absolute;
-    top: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 16px;
-    padding: 8px 20px;
-    font-family: monospace;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.lap-item span {
-    color: #00f0ff;
-}
-
-#lap-best {
-    color: #8be9c1;
-}
-
 #hud {
     position: absolute;
     bottom: 60px;
@@ -344,6 +365,7 @@ body {
     align-items: center;
     padding: 10px 24px;
     border-radius: 40px;
+    z-index: 10;
 }
 
 .hud-item {
@@ -374,22 +396,6 @@ body {
     color: #b89cff;
 }
 
-.steer-bar {
-    width: 60px;
-    height: 4px;
-    background: rgba(100, 200, 255, 0.15);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-#steer-indicator {
-    height: 100%;
-    width: 50%;
-    background: #00f0ff;
-    box-shadow: 0 0 10px #00f0ff;
-    transition: transform 0.1s;
-}
-
 #hint {
     position: absolute;
     bottom: 20px;
@@ -401,6 +407,7 @@ body {
     padding: 6px 16px;
     border-radius: 20px;
     white-space: nowrap;
+    z-index: 10;
 }
 
 #minimap {
@@ -413,49 +420,149 @@ body {
     z-index: 10;
 }
 
-/* 追加到 style.css 最末尾 */
-#rear-view-mirror {
-    position: absolute;
-    top: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-radius: 12px;
-    border: 2px solid rgba(100, 200, 255, 0.4);
-    background: #000;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-    overflow: hidden;
-    display: none;
-    /* 默认隐藏，仅主驾显示 */
-    z-index: 20;
-    pointer-events: none;
-}
-
-#rear-view-mirror .mirror-content {
-    position: absolute;
+/* 虚拟摇杆及扩展按钮 */
+#joystick-container {
+    position: fixed;
     inset: 0;
+    pointer-events: none;
+    z-index: 100;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #00f0ff;
-    font-family: monospace;
-    font-size: 12px;
-    letter-spacing: 2px;
-    opacity: 0.5;
-    /* 真实画面会覆盖在此背景之上 */
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 40px;
 }
 
-#collision-hint {
+.joystick-base {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(20, 35, 55, 0.4);
+    border: 2px solid rgba(100, 200, 255, 0.3);
+    position: relative;
+    pointer-events: auto;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+    touch-action: none;
+}
+
+.joystick-stick {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.8), rgba(0, 100, 200, 0.4));
+    border: 2px solid #00f0ff;
     position: absolute;
-    top: 50%;
     left: 50%;
+    top: 50%;
     transform: translate(-50%, -50%);
-    color: #ff2222;
-    font-size: 48px;
-    font-weight: 900;
-    font-family: monospace;
-    text-shadow: 0 0 30px #ff2222;
-    opacity: 0;
-    z-index: 30;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
     pointer-events: none;
-    transition: opacity 0.2s;
+}
+
+.joystick-label {
+    position: absolute;
+    bottom: -24px;
+    width: 100%;
+    text-align: center;
+    color: #7a9cc6;
+    font-size: 12px;
+    font-weight: bold;
+    pointer-events: none;
+}
+
+/* 右侧区域组合 */
+#joy-right-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    pointer-events: none;
+}
+
+.joy-action-btns {
+    display: flex;
+    gap: 15px;
+    pointer-events: auto;
+}
+
+.joy-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(20, 35, 55, 0.6);
+    border: 2px solid rgba(100, 200, 255, 0.4);
+    color: #c6d6ec;
+    font-size: 14px;
+    font-weight: bold;
+    backdrop-filter: blur(10px);
+    touch-action: none;
+    user-select: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    transition: all 0.1s;
+}
+
+.joy-btn:active,
+.joy-btn.active {
+    background: rgba(0, 150, 255, 0.6);
+    border-color: #00f0ff;
+    color: #fff;
+    box-shadow: 0 0 15px #00f0ff;
+    transform: scale(0.95);
+}
+
+#btn-joy-overdrive {
+    border-color: #ffaa00;
+    color: #ffaa00;
+}
+
+#btn-joy-overdrive:active,
+#btn-joy-overdrive.active {
+    background: rgba(255, 170, 0, 0.6);
+    border-color: #ffaa00;
+    color: #fff;
+    box-shadow: 0 0 15px #ffaa00;
+}
+
+@media (max-width: 800px) {
+
+    #left-panel,
+    #hint,
+    #lap-timer {
+        display: none !important;
+    }
+
+    #control-panel {
+        transform: scale(0.8);
+        transform-origin: top right;
+        top: 10px;
+        right: 10px;
+    }
+
+    #hud {
+        bottom: 160px;
+        transform: translateX(-50%) scale(0.8);
+    }
+
+    #minimap {
+        bottom: 150px;
+        transform: scale(0.7);
+    }
+
+    .joystick-base {
+        width: 140px;
+        height: 140px;
+    }
+
+    .joystick-stick {
+        width: 60px;
+        height: 60px;
+    }
+
+    #rear-view-mirror {
+        transform: translateX(-50%) scale(0.6);
+        top: 10px;
+    }
+
+    #joystick-container {
+        padding: 20px;
+    }
 }

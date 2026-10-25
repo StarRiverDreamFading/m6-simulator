@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+
 const GEAR = { P: 'P', D: 'D', R: 'R', N: 'N' };
 
 export class DrivingController {
@@ -26,15 +27,18 @@ export class DrivingController {
         this.wheelbase = 2.95; this.maxSteer = 0.55;
         this.keys = { w: false, s: false, a: false, d: false, handbrake: false, shift: false };
 
-        this.aebAlerted = false; this.ncaAvoidOffset = 0; this.onepedal = false; this.inSlipstream = false;
-        this.launchReady = false; this.launchActive = false; this.launchTimer = 0;
+        this.ncaAvoidOffset = 0; this.onepedal = false; this.inSlipstream = false;
+        this.launchReady = false; this.launchTimer = 0;
         this.overdriveEnergy = 100; this.isOverdrive = false;
 
         this.battery = 100; this.powerConsumption = 0;
 
-        // 特技系统
         this.isStunting = false; this.stuntTimer = 0; this.stuntAngle = 0;
         this.stuntCenter = new THREE.Vector3();
+
+        this.parkingAnim = null; this.parkingPath = null;
+        this.inputMethod = 'keyboard';
+        this.joySteer = 0; this.joyThrottle = 0;
 
         this._bindKeys();
         this.applyToCar(0);
@@ -54,8 +58,8 @@ export class DrivingController {
 
             if (k === 'w' || k === 'arrowup') this.keys.w = true;
             if (k === 's' || k === 'arrowdown') { this.keys.s = true; this.exitAuto(); }
-            if (k === 'a' || k === 'arrowleft') { this.keys.a = true; this.exitAuto(); }
-            if (k === 'd' || k === 'arrowright') { this.keys.d = true; this.exitAuto(); }
+            if (k === 'a' || k === 'arrowleft') { this.keys.a = true; if (this.mode !== 'autopilot' || this.autopilotMode !== 'rca') this.exitAuto(); }
+            if (k === 'd' || k === 'arrowright') { this.keys.d = true; if (this.mode !== 'autopilot' || this.autopilotMode !== 'rca') this.exitAuto(); }
             if (k === ' ') { this.keys.handbrake = true; this.exitAuto(); }
             if (k === 'shift') this.keys.shift = true;
         };
@@ -72,8 +76,9 @@ export class DrivingController {
     }
 
     exitAuto() {
-        if (this.mode === 'autopilot') {
-            this.mode = 'manual'; this.callbacks.onModeChange?.('manual'); this.callbacks.onLog?.("驾驶员已接管车辆");
+        if (this.mode === 'autopilot' || this.mode === 'parking') {
+            this.mode = 'manual'; this.parkingAnim = null; this.parkingPath = null;
+            this.callbacks.onModeChange?.('manual'); this.callbacks.onLog?.("驾驶员已接管车辆");
         }
     }
 
@@ -94,8 +99,29 @@ export class DrivingController {
         if (this.mode === 'autopilot') { this.mode = 'manual'; this.callbacks.onModeChange?.('manual'); }
     }
 
+    startParking() {
+        if (this.mode === 'parking' || this.isStunting) return;
+        let best = null, bestDist = Infinity;
+        for (const s of this.env.parkingSpots) {
+            if (s.occupied) continue;
+            const d = (s.x - this.position.x) ** 2 + (s.z - this.position.z) ** 2;
+            if (d < bestDist) { bestDist = d; best = s; }
+        }
+        if (!best) { this.callbacks.onParkingFail?.(); return; }
+
+        this.mode = 'parking'; this.speed = 0; this.steer = 0; this.gear = GEAR.R; best.occupied = true;
+        const p0 = this.position.clone();
+        const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+        const p1 = p0.clone().add(forward.multiplyScalar(4));
+        const p2 = new THREE.Vector3(best.x + (best.x > 50 ? 3 : -3), 0, best.z + 3);
+        const p3 = new THREE.Vector3(best.x, 0, best.z);
+        this.parkingPath = new THREE.CatmullRomCurve3([p0, p1, p2, p3]);
+        this.parkingAnim = { t: 0, duration: 4.0, spot: best };
+        this.callbacks.onModeChange?.('parking');
+    }
+
     startStunt() {
-        if (this.isStunting) return;
+        if (this.isStunting || this.mode === 'parking') return;
         this.isStunting = true; this.stuntTimer = 5.0;
         this.stuntAngle = Math.atan2(this.position.z, this.position.x);
         const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -104,10 +130,9 @@ export class DrivingController {
         this.mode = 'manual'; this.callbacks.onModeChange?.('manual'); this.callbacks.onLog?.("🔥 自动特技启动：极限画圈漂移");
     }
 
-    update(dt) {
+    update(dt, aiCars = []) {
         if (this.isStunting) { this.updateStunt(dt); return; }
 
-        // 加速带判定
         if (this.env.boostPads) {
             this.env.boostPads.forEach(pad => {
                 if (pad.active && this.position.distanceTo(pad.position) < 4) {
@@ -120,12 +145,16 @@ export class DrivingController {
         }
 
         let isBraking = false; let currentAccel = 0;
+
         if (this.mode === 'manual') {
-            if (this.keys.w && this.keys.s && this.speed < 0.5) {
+            let isBrakeDown = this.keys.s || (this.inputMethod === 'joystick' && (this.joyThrottle > 0.8 || this.keys.handbrake));
+            let isThrottleDown = this.keys.w || (this.inputMethod === 'joystick' && this.joyThrottle < -0.8);
+
+            if (isThrottleDown && isBrakeDown && this.speed < 0.5) {
                 if (!this.launchReady) { this.launchReady = true; this.callbacks.onLaunchReady?.(); }
             } else if (this.launchReady) {
-                if (this.keys.w && !this.keys.s) { this.launchReady = false; this.launchTimer = 2.5; this.callbacks.onLaunch?.(); }
-                else if (!this.keys.w) { this.launchReady = false; this.callbacks.onLaunchCancel?.(); }
+                if (isThrottleDown && !isBrakeDown) { this.launchReady = false; this.launchTimer = 2.5; this.callbacks.onLaunch?.(); }
+                else if (!isThrottleDown) { this.launchReady = false; this.callbacks.onLaunchCancel?.(); }
             }
         }
 
@@ -138,16 +167,27 @@ export class DrivingController {
 
         const currentSpeedKmh = Math.abs(this.speed) * 3.6;
         if (currentSpeedKmh > 1) {
+            // 缓慢扣除电量
             const drain = (0.005 + (currentSpeedKmh / 100) * 0.05) * dt;
             this.battery = Math.max(0, this.battery - drain);
-            this.powerConsumption = 12 + Math.pow(currentSpeedKmh / 40, 2) * 5;
-            if (this.battery <= 0) { this.speed = 0; this.battery = 0; }
+
+            // 目标电耗值 (带平滑插值)
+            const targetConsumption = 12 + Math.pow(currentSpeedKmh / 40, 2) * 5;
+            this.powerConsumption += (targetConsumption - this.powerConsumption) * dt * 3;
+
+            if (this.battery <= 0) { this.speed = 0; this.battery = 0; this.powerConsumption = 0; }
+        } else {
+            // 停稳时电耗慢慢降为 0
+            this.powerConsumption += (0 - this.powerConsumption) * dt * 2;
         }
 
+        // ====== 核心修复：补全 parking 分支 ======
         if (this.mode === 'manual') {
             const res = this.updateManual(dt); currentAccel = res.accel; isBraking = res.isBraking;
         } else if (this.mode === 'autopilot') {
-            this.updateAutopilot(dt, null);
+            this.updateAutopilot(dt, aiCars);
+        } else if (this.mode === 'parking') {
+            this.updateParking(dt);
         }
 
         if (this.launchTimer <= 0 && this.mode === 'autopilot') {
@@ -157,7 +197,7 @@ export class DrivingController {
 
         if (Math.abs(this.speed) > 5) {
             this.driftAngle = Math.abs(this.steer) * (this.speed / 15);
-            if (this.keys.handbrake) this.driftAngle += 0.2;
+            if (this.keys.handbrake || (this.inputMethod === 'joystick' && this.joyThrottle > 0.8)) this.driftAngle += 0.2;
         } else { this.driftAngle = 0; }
 
         this.applyToCar(dt, currentAccel, isBraking);
@@ -194,29 +234,49 @@ export class DrivingController {
             }
             return { accel: launchAccel, isBraking: false };
         }
-        const steerInput = (this.keys.a ? 1 : 0) - (this.keys.d ? 1 : 0);
+
+        let steerInput = 0;
+        let throttleInput = 0;
+
+        if (this.inputMethod === 'keyboard') {
+            steerInput = (this.keys.a ? 1 : 0) - (this.keys.d ? 1 : 0);
+            if (this.keys.w) throttleInput = 1;
+            else if (this.keys.s) throttleInput = -1;
+        } else {
+            steerInput = this.joySteer;
+            throttleInput = -this.joyThrottle;
+        }
+
         this.steer += (steerInput * this.maxSteer - this.steer) * Math.min(1, dt * 8);
+
         let accel = 0; let isBraking = false;
 
-        if (this.keys.handbrake) { this.speed *= Math.max(0, 1 - dt * 8); isBraking = true; }
-        else if (this.keys.w) {
+        if (this.keys.handbrake) {
+            this.speed *= Math.max(0, 1 - dt * 8); isBraking = true;
+        }
+        else if (throttleInput > 0.1) {
             this.gear = GEAR.D;
             let currentLimit = this.manualMaxSpeed; let currentForce = this.accelForce;
             if (this.isOverdrive) { currentLimit = 60; currentForce = this.accelForce * 2.5; }
-            if (this.speed < currentLimit) accel = this.inSlipstream ? currentForce * 1.3 : currentForce;
-        } else if (this.keys.s) {
-            if (this.speed > 0.2) { accel = -this.accelForce * 1.5; isBraking = true; }
-            else { this.gear = GEAR.R; accel = -this.accelForce * 0.6; }
+            if (this.speed < currentLimit) {
+                accel = (this.inSlipstream ? currentForce * 1.3 : currentForce) * throttleInput;
+            }
+        } else if (throttleInput < -0.1) {
+            if (this.speed > 0.2) { accel = -this.accelForce * 1.5 * Math.abs(throttleInput); isBraking = true; }
+            else { this.gear = GEAR.R; accel = -this.accelForce * 0.6 * Math.abs(throttleInput); }
         } else {
             if (this.onepedal && this.speed > 0) accel = -this.accelForce * 0.6;
             else this.speed *= Math.max(0, 1 - dt * 0.6);
             if (Math.abs(this.speed) < 0.05) this.speed = 0;
         }
+
         this.speed += accel * dt;
+
         const hardLimit = this.isOverdrive ? 60 : this.manualMaxSpeed;
         if (this.speed > hardLimit) this.speed = hardLimit;
         if (this.speed < -8) this.speed = -8;
-        if (this.speed > -0.3 && this.speed < 0.3 && !this.keys.w && !this.keys.s) this.gear = GEAR.P;
+        if (this.speed > -0.3 && this.speed < 0.3 && Math.abs(throttleInput) < 0.1) this.gear = GEAR.P;
+
         if (Math.abs(this.speed) > 0.01) {
             const angularVel = (this.speed / this.wheelbase) * Math.tan(this.steer);
             this.yaw += angularVel * dt;
@@ -225,9 +285,29 @@ export class DrivingController {
         return { accel, isBraking };
     }
 
-    updateAutopilot(dt) {
+    updateAutopilot(dt, aiCars) {
         let targetSpd = this.autopilotTargetSpeed;
-        if (this.autopilotMode === 'nca') {
+
+        if (this.autopilotMode === 'acc') {
+            let minDistance = Infinity;
+            const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+            aiCars.forEach(car => {
+                const toCar = car.mesh.position.clone().sub(this.position);
+                const dist = toCar.length();
+                toCar.normalize();
+                if (forward.dot(toCar) > 0.8 && dist < 20) { if (dist < minDistance) minDistance = dist; }
+            });
+            if (minDistance < 15) {
+                targetSpd = Math.min(targetSpd, (minDistance - 5) * 1.5);
+                if (minDistance < 8) targetSpd = 0;
+            }
+        }
+        else if (this.autopilotMode === 'rca') {
+            if (this.keys.a || (this.inputMethod === 'joystick' && this.joySteer < -0.5)) this.ncaAvoidOffset -= 6 * dt;
+            if (this.keys.d || (this.inputMethod === 'joystick' && this.joySteer > 0.5)) this.ncaAvoidOffset += 6 * dt;
+            this.ncaAvoidOffset = THREE.MathUtils.clamp(this.ncaAvoidOffset, -4, 4);
+        }
+        else if (this.autopilotMode === 'nca') {
             let targetOffset = this.keys.a ? 3.5 : (this.keys.d ? -3.5 : 0);
             this.ncaAvoidOffset += (targetOffset - this.ncaAvoidOffset) * Math.min(1, dt * 2);
             const p1 = this.autopilotCurve.getTangentAt(this.autopilotT);
@@ -235,20 +315,51 @@ export class DrivingController {
             const curvature = Math.acos(Math.min(1, Math.max(-1, p1.dot(p2))));
             targetSpd *= Math.max(0.4, 1.0 - curvature * 15);
         }
+
         this.speed += (targetSpd - this.speed) * Math.min(1, dt * 2);
+
         this.autopilotT += (this.speed * dt) / this.autopilotLength;
         this.autopilotT = ((this.autopilotT % 1) + 1) % 1;
+
         const point = this.autopilotCurve.getPointAt(this.autopilotT);
         const tangent = this.autopilotCurve.getTangentAt(this.autopilotT);
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
         this.position.copy(point).add(normal.multiplyScalar(this.ncaAvoidOffset));
+
         const targetYaw = Math.atan2(tangent.x, tangent.z);
         let diff = targetYaw - this.yaw;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-        this.yaw += diff * Math.min(1, dt * 6);
+
+        const steerSmooth = this.autopilotMode === 'rca' ? 4 : 6;
+        this.yaw += diff * Math.min(1, dt * steerSmooth);
         this.steer = THREE.MathUtils.clamp(diff * 2.5, -this.maxSteer, this.maxSteer);
         this.gear = GEAR.D;
+    }
+
+    updateParking(dt) {
+        const anim = this.parkingAnim;
+        if (!anim || !this.parkingPath) return;
+        anim.t += dt / anim.duration;
+        const t = Math.min(1, anim.t);
+        const ease = t * t * (3 - 2 * t);
+        const p = this.parkingPath.getPointAt(ease);
+        const tangent = this.parkingPath.getTangentAt(ease);
+        this.position.copy(p);
+        let targetYaw = Math.atan2(-tangent.x, -tangent.z);
+        if (ease < 0.2) targetYaw = Math.atan2(tangent.x, tangent.z);
+        let diff = targetYaw - this.yaw;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        this.yaw += diff * Math.min(1, dt * 4);
+        this.speed = -3; this.steer = THREE.MathUtils.clamp(diff * 3, -this.maxSteer, this.maxSteer);
+        if (t >= 1) {
+            this.position.copy(new THREE.Vector3(anim.spot.x, 0, anim.spot.z));
+            this.yaw = anim.spot.yaw; this.speed = 0; this.steer = 0; this.gear = GEAR.P;
+            this.mode = 'manual'; this.parkingAnim = null; this.parkingPath = null;
+            this.callbacks.onModeChange?.('manual');
+            this.callbacks.onParkingComplete?.();
+        }
     }
 
     applyToCar(dt, accel = 0, isBraking = false) {

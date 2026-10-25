@@ -1,13 +1,13 @@
 {
   "name": "wenjie-m6-simulator",
   "version": "1.0.0",
-  "description": "问界M6 纯电Max+ 二驱 3D智驾模拟器",
+  "description": "问界M6 纯电Max+ 二驱 3D模拟器",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.22.3",
-    "ws": "^8.22.0"
+    "express": "^4.19.2",
+    "ws": "^8.17.0"
   }
 }
