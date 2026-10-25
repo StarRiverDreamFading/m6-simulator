@@ -11,11 +11,17 @@ const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3000;
 
-// 【Render 适配】优先使用环境变量 DATA_DIR（用于挂载持久化磁盘）
-// 如果本地开发没有设置环境变量，则默认使用项目目录下的 data 文件夹
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+// 默认优先使用 /tmp（确保在云端有写入权限），如果本地开发没配环境变量则使用本地 data 文件夹
+const DATA_DIR = process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/tmp/data' : path.join(__dirname, 'data'));
 const TRIP_FILE = path.join(DATA_DIR, 'trips.json');
 const EVENT_FILE = path.join(DATA_DIR, 'events.json');
+
+// 加上 try-catch 防止因为权限问题导致整个服务崩溃
+try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+} catch (err) {
+    console.warn("⚠️ 无法创建数据目录，数据将无法持久化保存", err.message);
+}
 
 // 确保数据目录存在
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -24,7 +30,13 @@ const readJson = (file, fallback) => {
     try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
     catch { return fallback; }
 };
-const writeJson = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2));
+const writeJson = (file, data) => {
+    try {
+        fs.writeFileSync(file, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.warn("⚠️ 写入数据失败：", err.message);
+    }
+};
 
 const VEHICLE_CONFIG = {
     model: '问界M6 纯电Max+ 二驱',
