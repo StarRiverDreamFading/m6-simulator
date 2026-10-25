@@ -105,7 +105,11 @@ wss.on('connection', (ws) => {
 });
 
 // 【Render 适配】必须监听 0.0.0.0，Render 才能将外网流量转发进容器
+// server.listen(PORT, '0.0.0.0', () => {
+//     console.log(`问界M6 3D模拟器正在监听端口: ${PORT}`);
+//     console.log(`数据存储目录: ${DATA_DIR}`);
+// });
+app.get('/ping', (req, res) => res.send('pong'));
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`问界M6 3D模拟器正在监听端口: ${PORT}`);
-    console.log(`数据存储目录: ${DATA_DIR}`);
+    console.log(`纯净测试服务已启动，端口: ${PORT}`);
 });
