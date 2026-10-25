@@ -6,7 +6,6 @@ export function buildEnvironment() {
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: 0x0e1510, roughness: 0.95 }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; group.add(ground);
 
-    // 赛道关键点
     const points = [
         new THREE.Vector3(0, 0, -60), new THREE.Vector3(100, 0, -60), new THREE.Vector3(140, 0, -20),
         new THREE.Vector3(140, 0, 40), new THREE.Vector3(80, 0, 80), new THREE.Vector3(0, 0, 60),
@@ -17,7 +16,6 @@ export function buildEnvironment() {
     const trackWidth = 16;
     const segments = 500;
     const vertices = []; const indices = [];
-
     for (let i = 0; i <= segments; i++) {
         const t = i / segments;
         const point = autopilotCurve.getPointAt(t);
@@ -31,7 +29,6 @@ export function buildEnvironment() {
             indices.push(idx, idx + 2, idx + 1, idx + 1, idx + 2, idx + 3);
         }
     }
-
     const trackGeo = new THREE.BufferGeometry();
     trackGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     trackGeo.setIndex(indices); trackGeo.computeVertexNormals();
@@ -64,7 +61,6 @@ export function buildEnvironment() {
         }
     }
 
-    // 加速带
     const boostPads = [];
     const padMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
     for (let i = 0; i < 4; i++) {
@@ -77,7 +73,6 @@ export function buildEnvironment() {
         boostPads.push({ mesh: pad, position: p.clone(), active: true });
     }
 
-    // 起跑线
     const startPoint = autopilotCurve.getPointAt(0);
     const startTangent = autopilotCurve.getTangentAt(0);
     const startAngle = Math.atan2(startTangent.x, startTangent.z);
@@ -92,18 +87,51 @@ export function buildEnvironment() {
     startLine.position.copy(startPoint).add(new THREE.Vector3(0, 0.03, 0));
     startLine.rotation.y = startAngle; group.add(startLine);
 
-    // 建筑
     const garage = new THREE.Mesh(new THREE.BoxGeometry(50, 10, 15), new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.6 }));
-    garage.position.set(0, 5, -95); garage.castShadow = true; garage.receiveShadow = true; group.add(garage);
+    garage.position.set(0, 5, -95); garage.castShadow = true; group.add(garage);
 
-    // ===== 修复：补充完整的停车位 =====
+    // ===== 新增：充电桩系统 =====
+    const chargingStations = [];
+    const stationGeo = new THREE.CylinderGeometry(0.8, 1, 2.5, 8);
+    const stationMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.6 });
+
+    // 在赛道周围放 4 个充电桩
+    const stationTs = [0.1, 0.35, 0.6, 0.85];
+    stationTs.forEach(t => {
+        const p = autopilotCurve.getPointAt(t);
+        const tangent = autopilotCurve.getTangentAt(t);
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        // 放在赛道外侧
+        const pos = p.clone().add(normal.clone().multiplyScalar(12));
+
+        const stationGroup = new THREE.Group();
+        const pillar = new THREE.Mesh(stationGeo, stationMat);
+        pillar.position.y = 1.25; pillar.castShadow = true;
+        stationGroup.add(pillar);
+
+        // 充电光柱
+        const glow = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 4, 16, 1, true), glowMat);
+        glow.position.y = 2;
+        stationGroup.add(glow);
+
+        stationGroup.position.copy(pos);
+        group.add(stationGroup);
+
+        chargingStations.push({ mesh: stationGroup, position: pos, glow });
+    });
+    // ==============================
+
     const parkingSpots = [];
-    for (let i = 0; i < 5; i++) {
-        // 将停车位放在直道旁的平地上
-        const spot = { x: 35 + i * 6, z: -45, yaw: Math.PI / 2, occupied: false };
-        parkingSpots.push(spot);
+    const pBase = autopilotCurve.getPointAt(0.05);
+    const pTangent = autopilotCurve.getTangentAt(0.05);
+    const pNormal = new THREE.Vector3(-pTangent.z, 0, pTangent.x).normalize();
+    const angleP = Math.atan2(pTangent.x, pTangent.z);
 
-        // 画停车位线
+    for (let i = 0; i < 5; i++) {
+        const spotPos = pBase.clone().add(pTangent.clone().multiplyScalar(-i * 6)).add(pNormal.clone().multiplyScalar(-15));
+        parkingSpots.push({ x: spotPos.x, z: spotPos.z, yaw: angleP + Math.PI / 2, occupied: false });
+
         const slot = new THREE.Group();
         const lMat = new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.5 });
         const w = 3, l = 5.5;
@@ -115,11 +143,10 @@ export function buildEnvironment() {
             const line = new THREE.Mesh(new THREE.BoxGeometry(w, 0.01, 0.1), lMat);
             line.position.set(0, 0.04, dz); slot.add(line);
         });
-        slot.position.set(spot.x, 0, spot.z);
-        slot.rotation.y = spot.yaw;
+        slot.position.set(spotPos.x, 0, spotPos.z);
+        slot.rotation.y = angleP + Math.PI / 2;
         group.add(slot);
     }
-    // ==================================
 
     const obstacles = [];
     const coneMat = new THREE.MeshStandardMaterial({ color: 0xff5500 });
@@ -142,5 +169,5 @@ export function buildEnvironment() {
     const rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0xaaccff, size: 0.15, transparent: true, opacity: 0.6 }));
     rain.visible = false; group.add(rain);
 
-    return { group, parkingSpots, autopilotCurve, rain, obstacles, trackMat, boostPads };
+    return { group, autopilotCurve, rain, obstacles, trackMat, boostPads, parkingSpots, chargingStations };
 }

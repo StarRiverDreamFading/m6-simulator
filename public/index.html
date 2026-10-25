@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>问界M6 纯电Max+ · 终极赛道版</title>
+    <title>问界M6 纯电Max+ · 极致智驾版</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/style.css">
     <script type="importmap">
@@ -19,7 +19,25 @@
 
 <body>
     <canvas id="scene"></canvas>
+
     <div id="speed-lines"></div>
+
+    <div id="dia-warning">
+        <div class="warning-icon">⚠️</div>
+        <div class="warning-title">检测到驾驶员失能</div>
+        <div class="warning-sub">系统已接管，正在紧急靠边停车...</div>
+    </div>
+
+    <!-- 盲区监测警告 -->
+    <div id="bsd-warning">⚠️ 盲区有车，请勿变道</div>
+
+    <div id="hologram-hud">
+        <div class="hud-ring">
+            <div class="hud-speed" id="holo-speed">0</div>
+            <div class="hud-unit">km/h</div>
+            <div class="hud-gforce">G: <span id="holo-g">0.0</span></div>
+        </div>
+    </div>
 
     <div id="rear-view-mirror">
         <canvas id="mirror-canvas" width="300" height="150"></canvas>
@@ -30,15 +48,10 @@
     <div id="drift-hint">🔥 漂移得分 <span id="drift-score">0</span></div>
     <div id="overdrive-hint">🚀 OVERDRIVE 超载模式</div>
 
-    <div id="hud-fp">
-        <div class="fp-speed"><span id="fp-speed-val">0</span> <small>km/h</small></div>
-        <div class="fp-mode" id="fp-mode-val">READY</div>
-    </div>
-
     <aside id="left-panel">
         <div id="info-panel" class="glass-panel">
             <h1>问界 M6 纯电 Max+</h1>
-            <div class="subtitle">二驱 · 81kWh · 赛道终极重构版</div>
+            <div class="subtitle">二驱 · 81kWh · 极致智驾版</div>
             <div class="spec-grid">
                 <div class="spec-item"><span class="label">驾驶模式</span><span class="value highlight"
                         id="val-mode">舒适</span></div>
@@ -48,6 +61,14 @@
                         kWh/100km</span></div>
                 <div class="spec-item"><span class="label">电池电量</span><span class="value highlight"
                         id="val-battery">100%</span></div>
+                <div class="spec-item"><span class="label">前轮胎压</span><span class="value" id="val-tpms-f">2.4 bar</span>
+                </div>
+                <div class="spec-item"><span class="label">后轮胎压</span><span class="value" id="val-tpms-r">2.4 bar</span>
+                </div>
+            </div>
+            <div class="spec-item" style="grid-column: span 2; margin-top: 8px;">
+                <span class="label">最佳圈速 (本地)</span>
+                <span class="value highlight" id="val-best-lap" style="font-size: 16px;">--:--.---</span>
             </div>
         </div>
         <div id="sys-log" class="glass-panel">
@@ -73,7 +94,7 @@
         </div>
 
         <div class="panel-section">
-            <div class="panel-title">智能驾驶与特技</div>
+            <div class="panel-title">智能驾驶辅助</div>
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
                 <button id="btn-lcc" class="wide">LCC 巡航</button>
                 <button id="btn-nca" class="wide">NCA 领航</button>
@@ -82,18 +103,36 @@
                 <button id="btn-acc" class="wide">ACC 自适应</button>
                 <button id="btn-rca" class="wide">RCA 漫游</button>
             </div>
-            <button id="btn-stunt" class="wide" style="color: #ffaa00; border-color: #ffaa00;">🔥 一键特技</button>
+
+            <div class="speed-control" style="margin-top: 8px; margin-bottom: 8px;">
+                <span style="font-size: 12px; color: #7a9cc6; width: 60px;">智驾速度</span>
+                <input type="range" id="auto-speed-slider" min="30" max="150" value="80">
+                <span class="speed-value" style="width: 60px;"><span id="auto-speed-val">80</span> km/h</span>
+            </div>
+
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                <button id="btn-alc" class="wide active">ALC 变道</button>
+                <button id="btn-tja" class="wide active">TJA 拥堵</button>
+            </div>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                <button id="btn-aeb" class="wide active">AEB 制动</button>
+                <button id="btn-bsd" class="wide active">BSD 盲区</button>
+            </div>
+
+            <button id="btn-p2p" class="wide" style="color: #00f0ff; border-color: #00f0ff; margin-bottom: 8px;">🚘
+                车位到车位 (P2P)</button>
+            <button id="btn-dia" class="wide"
+                style="color: #ff2222; border-color: #ff2222; background: rgba(255,0,0,0.1);">🚨 模拟驾驶员失能</button>
         </div>
 
         <div class="panel-section">
-            <div class="panel-title">车辆控制</div>
+            <div class="panel-title">车辆控制与特技</div>
+            <button id="btn-stunt" class="wide"
+                style="color: #ffaa00; border-color: rgba(255,170,0,0.5); background: rgba(255,170,0,0.1); margin-bottom: 8px;">🔥
+                一键特技</button>
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
                 <button id="btn-onepedal" class="wide">单踏板</button>
                 <button id="btn-hazard" class="wide">双闪</button>
-            </div>
-            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
-                <button id="btn-ghost" class="wide">幽灵车</button>
-                <button id="btn-sound" class="wide">开启声浪</button>
             </div>
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr;">
                 <button id="btn-racingline" class="wide">赛车线</button>
@@ -102,29 +141,29 @@
         </div>
 
         <div class="panel-section">
-            <div class="panel-title">车辆设置</div>
+            <div class="panel-title">环境与参数</div>
             <div class="speed-control" style="margin-top: 0;">
                 <span style="font-size: 12px; color: #7a9cc6; width: 60px;">最高限速</span>
                 <input type="range" id="limit-slider" min="60" max="200" value="120">
-                <span class="speed-value" style="width: 60px;"><span id="limit-val">120</span> km/h</span>
+                <span class="speed-value" style="width: 50px;"><span id="limit-val">120</span> km/h</span>
             </div>
-            <div class="btn-grid" style="margin-top: 8px; grid-template-columns: 1fr 1fr;">
+            <div class="btn-grid" style="margin-top: 12px; grid-template-columns: 1fr 1fr;">
                 <button id="btn-weather">开启雨天</button>
                 <button id="btn-daynight">切换黄昏</button>
-            </div>
-            <div class="btn-grid" style="margin-top: 8px;">
-                <button id="btn-auto-weather" class="wide">自动天气轮换</button>
             </div>
         </div>
     </div>
 
     <div id="hud" class="glass-panel">
         <div class="hud-item speed"><span id="hud-speed">0</span><small>km/h</small></div>
+        <div class="hud-divider"></div>
         <div class="hud-item gear"><span id="hud-gear">P</span></div>
+        <div class="hud-divider"></div>
         <div class="hud-item mode"><span id="hud-mode">手动</span></div>
     </div>
 
-    <div id="hint">W/↑ 加速 · S/↓ 刹车 · A/D 转向 · 空格 手刹 · Shift 超载</div>
+    <div id="hint">W/↑ 加速 · S/↓ 刹车 · A/D 转向 · 空格 手刹 · Shift 超载 · NCA下按A/D触发ALC变道</div>
+
     <canvas id="minimap" width="150" height="150" class="glass-panel"></canvas>
 
     <div id="joystick-container" style="display: none;">

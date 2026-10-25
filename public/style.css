@@ -22,10 +22,10 @@ body {
 }
 
 .glass-panel {
-    background: linear-gradient(135deg, rgba(14, 22, 35, 0.85), rgba(10, 15, 25, 0.95));
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(100, 200, 255, 0.25);
+    background: linear-gradient(135deg, rgba(14, 22, 35, 0.8), rgba(10, 15, 25, 0.95));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(100, 200, 255, 0.2);
     box-shadow: inset 0 0 20px rgba(0, 200, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.6);
     border-radius: 16px;
     z-index: 10;
@@ -35,6 +35,68 @@ body {
     display: none;
 }
 
+/* --- 全息 HUD --- */
+#hologram-hud {
+    position: absolute;
+    bottom: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.hud-ring {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    border: 2px dashed rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), inset 0 0 30px rgba(0, 240, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: spin 20s linear infinite;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.hud-ring>* {
+    animation: spin 20s linear infinite reverse;
+}
+
+.hud-speed {
+    font-size: 56px;
+    font-weight: 900;
+    font-family: monospace;
+    color: #00f0ff;
+    text-shadow: 0 0 20px #00f0ff;
+    line-height: 1;
+}
+
+.hud-unit {
+    font-size: 12px;
+    color: #8be9c1;
+    margin-top: 4px;
+    letter-spacing: 2px;
+}
+
+.hud-gforce {
+    position: absolute;
+    bottom: 30px;
+    font-size: 14px;
+    color: #ffaa00;
+    font-family: monospace;
+}
+
+/* --- 提示语 --- */
 #launch-hint {
     position: absolute;
     top: 20%;
@@ -47,7 +109,6 @@ body {
     text-shadow: 0 0 20px #ff0055;
     display: none;
     z-index: 20;
-    pointer-events: none;
     animation: flash 0.5s infinite alternate;
 }
 
@@ -93,15 +154,16 @@ body {
     letter-spacing: 5px;
 }
 
+/* --- 后视镜 --- */
 #rear-view-mirror {
     position: absolute;
     top: 24px;
     left: 50%;
     transform: translateX(-50%);
-    width: 300px;
-    height: 150px;
+    width: 280px;
+    height: 140px;
     border-radius: 12px;
-    border: 2px solid rgba(100, 200, 255, 0.4);
+    border: 2px solid rgba(100, 200, 255, 0.3);
     background: #000;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
     overflow: hidden;
@@ -126,6 +188,7 @@ body {
     opacity: 0.6;
 }
 
+/* --- 速度线 --- */
 #speed-lines {
     position: fixed;
     inset: 0;
@@ -149,56 +212,12 @@ body {
     opacity: 1;
 }
 
-@keyframes spin {
-    to {
-        transform: rotate(10deg);
-    }
-}
-
-#hud-fp {
-    position: absolute;
-    bottom: 12%;
-    left: 50%;
-    transform: translateX(-50%);
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    font-family: monospace;
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
-    z-index: 5;
-    pointer-events: none;
-    background: rgba(0, 20, 40, 0.3);
-    backdrop-filter: blur(5px);
-    padding: 15px 30px;
-    border-radius: 30px;
-    border: 1px solid rgba(0, 240, 255, 0.2);
-}
-
-#hud-fp .fp-speed {
-    font-size: 42px;
-    font-weight: bold;
-    color: #00f0ff;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-}
-
-#hud-fp .fp-speed span {
-    font-size: 64px;
-}
-
-#hud-fp .fp-mode {
-    font-size: 18px;
-    color: #8be9c1;
-    letter-spacing: 2px;
-    margin-top: 5px;
-}
-
+/* --- 左侧面板 --- */
 #left-panel {
     position: absolute;
     top: 24px;
     left: 24px;
-    width: 300px;
+    width: 280px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -226,18 +245,20 @@ body {
 .spec-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
 }
 
 .spec-item .label {
     color: #5b7597;
     font-size: 11px;
     display: block;
+    margin-bottom: 2px;
 }
 
 .spec-item .value {
     font-weight: 600;
     font-size: 13px;
+    font-family: monospace;
 }
 
 .spec-item .value.highlight {
@@ -245,8 +266,8 @@ body {
 }
 
 #sys-log {
-    padding: 10px 14px;
-    height: 90px;
+    padding: 12px 14px;
+    height: 100px;
     overflow: hidden;
     font-family: monospace;
     font-size: 11px;
@@ -257,32 +278,33 @@ body {
     gap: 4px;
 }
 
+/* --- 右侧面板 --- */
 #control-panel {
     position: absolute;
     top: 24px;
     right: 24px;
-    width: 240px;
-    padding: 12px;
+    width: 250px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     max-height: calc(100vh - 48px);
     overflow-y: auto;
     z-index: 10;
 }
 
 .panel-title {
-    font-size: 11px;
+    font-size: 12px;
     color: #7eb8ff;
     letter-spacing: 1px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     font-weight: bold;
 }
 
 .btn-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 8px;
 }
 
 .btn-grid button,
@@ -290,9 +312,9 @@ body {
     background: rgba(20, 35, 55, 0.6);
     border: 1px solid rgba(100, 200, 255, 0.15);
     color: #c6d6ec;
-    border-radius: 6px;
-    padding: 6px 4px;
-    font-size: 11px;
+    border-radius: 8px;
+    padding: 8px 4px;
+    font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
     font-family: inherit;
@@ -311,20 +333,20 @@ body {
     background: rgba(0, 150, 255, 0.4);
     border-color: #00f0ff;
     color: #fff;
-    box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
 }
 
 .wide {
     width: 100%;
     margin-bottom: 6px;
-    padding: 8px 4px;
+    padding: 10px 4px;
 }
 
 .speed-control {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 6px;
+    gap: 10px;
+    margin-top: 8px;
 }
 
 .speed-control input[type=range] {
@@ -338,8 +360,8 @@ body {
 
 .speed-control input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: #00f0ff;
     box-shadow: 0 0 8px #00f0ff;
@@ -349,51 +371,62 @@ body {
 .speed-value {
     color: #00f0ff;
     font-weight: bold;
-    font-size: 11px;
-    min-width: 45px;
+    font-size: 12px;
+    min-width: 55px;
     text-align: right;
     font-family: monospace;
 }
 
+/* --- 底部 HUD --- */
 #hud {
     position: absolute;
     bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 20px;
+    gap: 24px;
     align-items: center;
-    padding: 10px 24px;
+    padding: 12px 32px;
     border-radius: 40px;
     z-index: 10;
 }
 
 .hud-item {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-size: 11px;
-    color: #7a9cc6;
+    align-items: baseline;
+    gap: 4px;
+    font-family: monospace;
 }
 
 .hud-item.speed span {
-    font-size: 24px;
+    font-size: 32px;
     font-weight: 800;
     color: #fff;
     text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
+.hud-item.speed small {
+    font-size: 12px;
+    color: #7a9cc6;
+}
+
 .hud-item.gear span {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 800;
     color: #00f0ff;
     text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
 }
 
 .hud-item.mode span {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     color: #b89cff;
+}
+
+.hud-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(100, 200, 255, 0.2);
 }
 
 #hint {
@@ -402,9 +435,9 @@ body {
     left: 50%;
     transform: translateX(-50%);
     color: #5a7290;
-    font-size: 11px;
+    font-size: 12px;
     background: rgba(10, 15, 25, 0.7);
-    padding: 6px 16px;
+    padding: 8px 20px;
     border-radius: 20px;
     white-space: nowrap;
     z-index: 10;
@@ -412,7 +445,7 @@ body {
 
 #minimap {
     position: absolute;
-    bottom: 20px;
+    bottom: 24px;
     right: 24px;
     border-radius: 50%;
     padding: 10px;
@@ -420,7 +453,7 @@ body {
     z-index: 10;
 }
 
-/* 虚拟摇杆及扩展按钮 */
+/* --- 摇杆 --- */
 #joystick-container {
     position: fixed;
     inset: 0;
@@ -469,7 +502,6 @@ body {
     pointer-events: none;
 }
 
-/* 右侧区域组合 */
 #joy-right-area {
     display: flex;
     flex-direction: column;
@@ -525,13 +557,12 @@ body {
 @media (max-width: 800px) {
 
     #left-panel,
-    #hint,
-    #lap-timer {
+    #hint {
         display: none !important;
     }
 
     #control-panel {
-        transform: scale(0.8);
+        transform: scale(0.85);
         transform-origin: top right;
         top: 10px;
         right: 10px;
@@ -565,4 +596,85 @@ body {
     #joystick-container {
         padding: 20px;
     }
+}
+
+/* 追加到文件末尾 */
+#dia-warning {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 0, 0, 0.2);
+    border: 2px solid #ff2222;
+    border-radius: 16px;
+    padding: 24px 40px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(255, 0, 0, 0.6), inset 0 0 20px rgba(255, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    display: none;
+    animation: pulse-red 1s infinite alternate;
+}
+
+#dia-warning .warning-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+#dia-warning .warning-title {
+    color: #ff2222;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-shadow: 0 0 10px #ff2222;
+}
+
+#dia-warning .warning-sub {
+    color: #fff;
+    font-size: 14px;
+    font-family: monospace;
+}
+
+@keyframes pulse-red {
+    from {
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+    }
+
+    to {
+        box-shadow: 0 0 60px rgba(255, 0, 0, 0.8);
+    }
+}
+
+/* 追加到文件末尾 */
+#bsd-warning {
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 50, 50, 0.9);
+    color: #fff;
+    font-weight: bold;
+    font-size: 20px;
+    padding: 12px 30px;
+    border-radius: 30px;
+    border: 2px solid #ff2222;
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+    z-index: 100;
+    display: none;
+    animation: flash-red 0.3s infinite alternate;
+}
+
+@keyframes flash-red {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0.5;
+    }
+}
+
+#val-battery {
+    transition: all 0.3s;
 }

@@ -5,21 +5,19 @@ export function createVehicle() {
     const bodyGroup = new THREE.Group();
     car.add(bodyGroup);
 
-    const paint = new THREE.MeshPhysicalMaterial({ color: 0x2c1b3d, metalness: 0.6, roughness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.1, envMapIntensity: 1.2 });
-    const glass = new THREE.MeshPhysicalMaterial({ color: 0x08121c, transmission: 0.95, thickness: 0.4, transparent: true, depthWrite: false });
-    const blackTrim = new THREE.MeshStandardMaterial({ color: 0x0a0c0e, roughness: 0.45 });
-    const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe6ef, metalness: 1.0, roughness: 0.12 });
+    // 逼真车漆
+    const paint = new THREE.MeshPhysicalMaterial({
+        color: 0x2c1b3d, metalness: 0.65, roughness: 0.25,
+        clearcoat: 1.0, clearcoatRoughness: 0.05, envMapIntensity: 1.5
+    });
+    const glass = new THREE.MeshPhysicalMaterial({ color: 0x08121c, transmission: 0.9, thickness: 0.5, transparent: true, depthWrite: false, roughness: 0.05 });
+    const blackTrim = new THREE.MeshStandardMaterial({ color: 0x0a0c0e, roughness: 0.6 });
 
     const lightWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1 });
     const lightRed = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff1111, emissiveIntensity: 0.1 });
-
-    // 流水转向灯材质组
-    const blinkerMatsL = [];
-    const blinkerMatsR = [];
-    for (let i = 0; i < 3; i++) {
-        blinkerMatsL.push(new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 0 }));
-        blinkerMatsR.push(new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 0 }));
-    }
+    // 单数材质，非数组
+    const blinkerMatL = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 0 });
+    const blinkerMatR = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 0 });
 
     const profile = [
         [2.40, 0.26], [2.47, 0.40], [2.44, 0.56], [2.34, 0.70], [2.10, 0.82], [1.62, 0.88], [1.16, 0.94],
@@ -39,49 +37,32 @@ export function createVehicle() {
     body.castShadow = true; body.receiveShadow = true;
     bodyGroup.add(body);
 
-    // 后视镜
     [-1.0, 1.0].forEach(x => {
         const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.2), paint);
-        mirror.position.set(x * 0.95, 1.15, 0.75);
-        bodyGroup.add(mirror);
+        mirror.position.set(x * 0.95, 1.15, 0.75); bodyGroup.add(mirror);
     });
 
-    // 玻璃
     const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.56, 1.1), glass);
-    windshield.rotation.x = -0.555; windshield.position.set(0, 1.23, 0.69);
-    bodyGroup.add(windshield);
+    windshield.rotation.x = -0.555; windshield.position.set(0, 1.23, 0.69); bodyGroup.add(windshield);
 
     const wiper = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.02, 0.02), blackTrim);
-    wiper.position.set(-0.4, 1.05, 0.9);
-    bodyGroup.add(wiper);
+    wiper.position.set(-0.4, 1.05, 0.9); bodyGroup.add(wiper);
 
-    // 内饰
     const dashBoard = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 0.4), blackTrim);
     dashBoard.position.set(0, 0.95, 0.7); bodyGroup.add(dashBoard);
 
+    // 中控屏
     const screenCanvas = document.createElement('canvas');
     screenCanvas.width = 512; screenCanvas.height = 256;
     const ctx = screenCanvas.getContext('2d');
     const screenTexture = new THREE.CanvasTexture(screenCanvas);
     const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.22), new THREE.MeshBasicMaterial({ map: screenTexture }));
-    screen.position.set(0.05, 1.12, 0.65);
-    screen.rotation.x = -0.15; screen.rotation.y = -0.2;
+    screen.position.set(0.05, 1.12, 0.65); screen.rotation.x = -0.15; screen.rotation.y = -0.2;
     bodyGroup.add(screen);
 
-    const dashCtxCanvas = document.createElement('canvas');
-    dashCtxCanvas.width = 256; dashCtxCanvas.height = 128;
-    const dashCtx = dashCtxCanvas.getContext('2d');
-    const dashTexture = new THREE.CanvasTexture(dashCtxCanvas);
-    const dashScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.12), new THREE.MeshBasicMaterial({ map: dashTexture }));
-    dashScreen.position.set(-0.38, 1.05, 0.6); dashScreen.rotation.x = -0.1;
-    bodyGroup.add(dashScreen);
-
-    // 方向盘 (暴露以便联动)
     const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 8, 24), blackTrim);
-    steeringWheel.position.set(-0.38, 0.98, 0.5); steeringWheel.rotation.x = -0.3;
-    bodyGroup.add(steeringWheel);
+    steeringWheel.position.set(-0.38, 0.98, 0.5); steeringWheel.rotation.x = -0.3; bodyGroup.add(steeringWheel);
 
-    // 外观灯光
     [-0.62, 0.62].forEach(x => {
         const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), lightWhite);
         lamp.scale.set(1.5, 0.5, 0.65); lamp.position.set(x, 0.82, 2.42); bodyGroup.add(lamp);
@@ -90,20 +71,10 @@ export function createVehicle() {
     const tail = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.06, 0.04), lightRed);
     tail.position.set(0, 0.95, -2.44); bodyGroup.add(tail);
 
-    // 流水转向灯 (左)
-    for (let i = 0; i < 3; i++) {
-        const bl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.04), blinkerMatsL[i]);
-        bl.position.set(-0.75 + i * 0.08, 0.82, 2.43); bodyGroup.add(bl);
-        const blR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.04), blinkerMatsL[i]);
-        blR.position.set(-0.75 + i * 0.08, 0.95, -2.43); bodyGroup.add(blR);
-    }
-    // 流水转向灯 (右)
-    for (let i = 0; i < 3; i++) {
-        const br = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.04), blinkerMatsR[i]);
-        br.position.set(0.75 - i * 0.08, 0.82, 2.43); bodyGroup.add(br);
-        const brR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.04), blinkerMatsR[i]);
-        brR.position.set(0.75 - i * 0.08, 0.95, -2.43); bodyGroup.add(brR);
-    }
+    const blinkerL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.04), blinkerMatL);
+    blinkerL.position.set(-0.65, 0.82, 2.43); bodyGroup.add(blinkerL);
+    const blinkerR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.04), blinkerMatR);
+    blinkerR.position.set(0.65, 0.82, 2.43); bodyGroup.add(blinkerR);
 
     const wing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.3), blackTrim);
     wing.position.set(0, 1.15, -2.2); wing.rotation.x = 0; bodyGroup.add(wing);
@@ -131,8 +102,7 @@ export function createVehicle() {
 
     return {
         group: car, bodyGroup, paint, wheels, wheelRadius, headlight,
-        lightWhite, lightRed, blinkerMatsL, blinkerMatsR,
-        screenCtx: ctx, screenTexture, dashCtx, dashTexture,
-        wing, wiper, steeringWheel
+        lightWhite, lightRed, blinkerMatL, blinkerMatR,
+        screenCtx: ctx, screenTexture, wing, wiper, steeringWheel
     };
 }
