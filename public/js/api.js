@@ -1,7 +1,6 @@
 // public/js/api.js
 
 export const API = {
-    // 获取车辆配置
     async getConfig() {
         try {
             const res = await fetch('/api/config');
@@ -13,7 +12,6 @@ export const API = {
         }
     },
 
-    // 上报实时遥测数据
     async postTelemetry(data) {
         try {
             await fetch('/api/telemetry', {
@@ -21,12 +19,9 @@ export const API = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-        } catch (e) {
-            // 忽略网络错误，防止刷屏
-        }
+        } catch (e) { }
     },
 
-    // 上报事件（如泊车、AEB等）
     async postEvent(type, data) {
         try {
             const res = await fetch('/api/events', {
@@ -35,12 +30,9 @@ export const API = {
                 body: JSON.stringify({ type, ...data })
             });
             return await res.json();
-        } catch (e) {
-            return null;
-        }
+        } catch (e) { return null; }
     },
 
-    // 保存行程
     async postTrip(data) {
         try {
             const res = await fetch('/api/trips', {
@@ -49,44 +41,21 @@ export const API = {
                 body: JSON.stringify(data)
             });
             return await res.json();
-        } catch (e) {
-            return null;
-        }
+        } catch (e) { return null; }
     },
 
-    // 建立 WebSocket 连接（自动适配 http/https）
     connectWS(onMessage) {
         try {
-            // 核心修复：如果在 https 环境下，必须使用 wss://
+            // 动态适配 wss 或 ws
             const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
             const wsUrl = `${protocol}${location.host}`;
 
-            console.log(`正在尝试连接 WebSocket: ${wsUrl}`);
             const ws = new WebSocket(wsUrl);
-
-            ws.onopen = () => {
-                console.log("WebSocket 连接成功！");
-            };
-
             ws.onmessage = (ev) => {
-                try {
-                    onMessage(JSON.parse(ev.data));
-                } catch (e) {
-                    // 忽略解析错误
-                }
+                try { onMessage(JSON.parse(ev.data)); } catch (e) { }
             };
-
-            ws.onerror = (err) => {
-                console.warn("WebSocket 连接发生错误，请检查后端服务是否正常。", err);
-            };
-
-            ws.onclose = () => {
-                console.log("WebSocket 连接已关闭。");
-            };
-
             return ws;
         } catch (e) {
-            console.warn("WebSocket 初始化失败:", e);
             return null;
         }
     }
