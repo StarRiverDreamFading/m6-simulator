@@ -60,7 +60,7 @@ body {
     }
 }
 
-/* Ư�Ƶ÷� */
+/* Ư�Ƶ÷� */
 #drift-hint {
     position: absolute;
     top: 30%;
@@ -411,4 +411,51 @@ body {
     padding: 10px;
     background: rgba(10, 15, 25, 0.8);
     z-index: 10;
+}
+
+/* 追加到 style.css 最末尾 */
+#rear-view-mirror {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 12px;
+    border: 2px solid rgba(100, 200, 255, 0.4);
+    background: #000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    display: none;
+    /* 默认隐藏，仅主驾显示 */
+    z-index: 20;
+    pointer-events: none;
+}
+
+#rear-view-mirror .mirror-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00f0ff;
+    font-family: monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    opacity: 0.5;
+    /* 真实画面会覆盖在此背景之上 */
+}
+
+#collision-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ff2222;
+    font-size: 48px;
+    font-weight: 900;
+    font-family: monospace;
+    text-shadow: 0 0 30px #ff2222;
+    opacity: 0;
+    z-index: 30;
+    pointer-events: none;
+    transition: opacity 0.2s;
 }
